@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "levelNumber": 3,
+  "sourceId": "level1-step-3",
+  "sourceCampaignIndex": 2,
+  "sourceFile": "data/editor-levels.json",
+  "grid": {
+    "columns": 6,
+    "rows": 6,
+    "origin": "top-left",
+    "positiveX": "right",
+    "positiveY": "down",
+    "indexOrder": "y * 6 + x"
+  },
+  "start": {
+    "x": 1,
+    "y": 3
+  },
+  "startDirection": "up",
+  "goal": {
+    "x": 3,
+    "y": 3
+  },
+  "characterId": "boks_yellow",
+  "obstacles": [
+    {
+      "x": 1,
+      "y": 2
+    }
+  ],
+  "decorations": [
+    {
+      "id": "decor-1775126242147-9cxf5",
+      "x": 1,
+      "y": 5,
+      "anchorX": 0.244,
+      "anchorY": 0.882,
+      "asset": "tree_small",
+      "layer": "object",
+      "scale": 1.8,
+      "count": 1,
+      "foliageColor": "#7fad82",
+      "trunkColor": "#509b55"
+    },
+    {
+      "id": "decor-1775126259001-eg6qb",
+      "x": 4,
+      "y": 1,
+      "anchorX": 0.756,
+      "anchorY": 0.232,
+      "asset": "tree_small",
+      "layer": "object",
+      "scale": 1.8,
+      "count": 1,
+      "foliageColor": "#97d39c",
+      "trunkColor": "#509b55"
+    },
+    {
+      "id": "decor-1775128090476-lzvtg",
+      "x": 4,
+      "y": 2,
+      "anchorX": 0.761,
+      "anchorY": 0.392,
+      "asset": "bee_hover",
+      "layer": "overlay",
+      "scale": 0.85,
+      "count": 3,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1775137828947-tojuo",
+      "x": 1,
+      "y": 0,
+      "anchorX": 0.218,
+      "anchorY": 0.112,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1775137831463-br3t1",
+      "x": 4,
+      "y": 5,
+      "anchorX": 0.734,
+      "anchorY": 0.904,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1775137831832-21lan",
+      "x": 5,
+      "y": 5,
+      "anchorX": 0.883,
+      "anchorY": 0.86,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    }
+  ],
+  "program": {
+    "mainCapacity": 8,
+    "functionCapacity": 4,
+    "mainSlotEnabled": [
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "functionSlotEnabled": [
+      false,
+      false,
+      false,
+      false
+    ],
+    "enabledCommands": [
+      "forward",
+      "right"
+    ],
+    "initialMain": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "initialFunction": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "theme": {
+    "id": "level1",
+    "overrides": [
+      {
+        "key": "--scene-grid-wrap-bg",
+        "value": "#3d4c29"
+      },
+      {
+        "key": "--grid-bg",
+        "value": "#b9dd98"
+      }
+    ]
+  },
+  "hints": {
+    "availableBlockGlow": true
+  },
+  "progression": {
+    "nextSourceLevelNumber": 4,
+    "nextIncludedLevelNumber": 4,
+    "isSourceCampaignFinal": false
+  }
+}

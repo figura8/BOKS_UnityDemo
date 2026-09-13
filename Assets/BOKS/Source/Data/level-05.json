@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 1,
+  "levelNumber": 5,
+  "sourceId": "level1-step-5",
+  "sourceCampaignIndex": 4,
+  "sourceFile": "data/editor-levels.json",
+  "grid": {
+    "columns": 6,
+    "rows": 6,
+    "origin": "top-left",
+    "positiveX": "right",
+    "positiveY": "down",
+    "indexOrder": "y * 6 + x"
+  },
+  "start": {
+    "x": 1,
+    "y": 4
+  },
+  "startDirection": "up",
+  "goal": {
+    "x": 2,
+    "y": 3
+  },
+  "characterId": "boks_green",
+  "obstacles": [
+    {
+      "x": 1,
+      "y": 3
+    }
+  ],
+  "decorations": [
+    {
+      "id": "decor-1778252901065-b1866",
+      "x": 1,
+      "y": 1,
+      "anchorX": 0.267,
+      "anchorY": 0.239,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1778252901491-cvu7c",
+      "x": 2,
+      "y": 1,
+      "anchorX": 0.466,
+      "anchorY": 0.243,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1778252902003-w4bjt",
+      "x": 4,
+      "y": 1,
+      "anchorX": 0.668,
+      "anchorY": 0.232,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1778252902741-1f83d",
+      "x": 5,
+      "y": 1,
+      "anchorX": 0.846,
+      "anchorY": 0.258,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1778252903818-lqtoz",
+      "x": 0,
+      "y": 1,
+      "anchorX": 0.122,
+      "anchorY": 0.221,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1778252904575-34wwc",
+      "x": 0,
+      "y": 2,
+      "anchorX": 0.131,
+      "anchorY": 0.408,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1778252905851-f82bs",
+      "x": 2,
+      "y": 2,
+      "anchorX": 0.471,
+      "anchorY": 0.361,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1778252906574-bw9qe",
+      "x": 3,
+      "y": 2,
+      "anchorX": 0.653,
+      "anchorY": 0.375,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1778252907101-obtxd",
+      "x": 5,
+      "y": 2,
+      "anchorX": 0.909,
+      "anchorY": 0.403,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1778252907843-dxen4",
+      "x": 1,
+      "y": 2,
+      "anchorX": 0.26,
+      "anchorY": 0.351,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1778252909212-o45y0",
+      "x": 0,
+      "y": 5,
+      "anchorX": 0.113,
+      "anchorY": 0.877,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1778252909575-ru7en",
+      "x": 2,
+      "y": 5,
+      "anchorX": 0.339,
+      "anchorY": 0.908,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1778252909834-nn53x",
+      "x": 3,
+      "y": 5,
+      "anchorX": 0.587,
+      "anchorY": 0.905,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1778252910058-q7udq",
+      "x": 4,
+      "y": 5,
+      "anchorX": 0.819,
+      "anchorY": 0.881,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    }
+  ],
+  "program": {
+    "mainCapacity": 8,
+    "functionCapacity": 4,
+    "mainSlotEnabled": [
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ],
+    "functionSlotEnabled": [
+      false,
+      false,
+      false,
+      false
+    ],
+    "enabledCommands": [
+      "forward",
+      "left",
+      "right"
+    ],
+    "initialMain": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "initialFunction": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "theme": {
+    "id": "level1",
+    "overrides": []
+  },
+  "hints": {
+    "availableBlockGlow": true
+  },
+  "progression": {
+    "nextSourceLevelNumber": 6,
+    "nextIncludedLevelNumber": null,
+    "isSourceCampaignFinal": false
+  }
+}

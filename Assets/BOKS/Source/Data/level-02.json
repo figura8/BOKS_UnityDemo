@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "levelNumber": 2,
+  "sourceId": "level1-step-2",
+  "sourceCampaignIndex": 1,
+  "sourceFile": "data/editor-levels.json",
+  "grid": {
+    "columns": 6,
+    "rows": 6,
+    "origin": "top-left",
+    "positiveX": "right",
+    "positiveY": "down",
+    "indexOrder": "y * 6 + x"
+  },
+  "start": {
+    "x": 1,
+    "y": 3
+  },
+  "startDirection": "right",
+  "goal": {
+    "x": 3,
+    "y": 3
+  },
+  "characterId": "boks_red",
+  "obstacles": [],
+  "decorations": [
+    {
+      "id": "decor-1775126327046-7axgy",
+      "x": 4,
+      "y": 5,
+      "anchorX": 0.745,
+      "anchorY": 0.893,
+      "asset": "tree_small",
+      "layer": "object",
+      "scale": 1,
+      "count": 1,
+      "foliageColor": "#5dae61",
+      "trunkColor": "#8f6136"
+    },
+    {
+      "id": "decor-1775126332085-ju2ht",
+      "x": 1,
+      "y": 1,
+      "anchorX": 0.257,
+      "anchorY": 0.263,
+      "asset": "tree_small",
+      "layer": "object",
+      "scale": 1.6,
+      "count": 1,
+      "foliageColor": "#5dae61",
+      "trunkColor": "#8f6136"
+    },
+    {
+      "id": "decor-1775127921826-px252",
+      "x": 1,
+      "y": 5,
+      "anchorX": 0.198,
+      "anchorY": 0.88,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1775127923468-k5oaw",
+      "x": 4,
+      "y": 2,
+      "anchorX": 0.71,
+      "anchorY": 0.357,
+      "asset": "daisy_flower",
+      "layer": "object",
+      "scale": 0.9,
+      "count": 1,
+      "foliageColor": "",
+      "trunkColor": ""
+    },
+    {
+      "id": "decor-1775128903069-23fe8",
+      "x": 2,
+      "y": 2,
+      "anchorX": 0.336,
+      "anchorY": 0.436,
+      "asset": "bee_hover",
+      "layer": "overlay",
+      "scale": 1,
+      "count": 3,
+      "foliageColor": "",
+      "trunkColor": ""
+    }
+  ],
+  "program": {
+    "mainCapacity": 8,
+    "functionCapacity": 4,
+    "mainSlotEnabled": [
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "functionSlotEnabled": [
+      false,
+      false,
+      false,
+      false
+    ],
+    "enabledCommands": [
+      "forward"
+    ],
+    "initialMain": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "initialFunction": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "theme": {
+    "id": "level1",
+    "overrides": [
+      {
+        "key": "--grid-bg",
+        "value": "#acd784"
+      }
+    ]
+  },
+  "hints": {
+    "availableBlockGlow": true
+  },
+  "progression": {
+    "nextSourceLevelNumber": 3,
+    "nextIncludedLevelNumber": 3,
+    "isSourceCampaignFinal": false
+  }
+}

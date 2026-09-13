@@ -1,0 +1,9 @@
+{
+  "name": "BOKS.Level2.PlayModeTests",
+  "references": [
+    "BOKS.Level2.Runtime"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
