@@ -51,6 +51,31 @@ namespace BOKS.Demo
         public string[] enabledCommands = new string[0];
     }
 
+    [Serializable]
+    public sealed class BOKSEnabledBlocks
+    {
+        public bool forward;
+        public bool left;
+        public bool right;
+        public bool function;
+    }
+
+    [Serializable]
+    public sealed class BOKSDecoration
+    {
+        public string id;
+        public int x;
+        public int y;
+        public float anchorX;
+        public float anchorY;
+        public string asset;
+        public string layer;
+        public float scale = 1f;
+        public int count = 1;
+        public string foliageColor;
+        public string trunkColor;
+    }
+
     /// <summary>
     /// Data for one campaign level, loaded from the source level JSON (e.g. level-02.json).
     /// Field names intentionally mirror the JSON keys (camelCase) so Unity's JsonUtility maps them
@@ -69,6 +94,16 @@ namespace BOKS.Demo
         public BOKSGridCell[] obstacles = new BOKSGridCell[0];
         public BOKSProgram program = new BOKSProgram();
 
+        // Native editor-levels.json fields. NormalizeSourceFields maps these onto the
+        // original per-level Unity schema above, keeping both source formats readable.
+        public int number;
+        public string startOri;
+        public BOKSDecoration[] decorations = new BOKSDecoration[0];
+        public bool[] mainSlotEnabled = new bool[0];
+        public bool[] fnSlotEnabled = new bool[0];
+        public BOKSEnabledBlocks enabledBlocks;
+        public bool glowEnabled = true;
+
         public int StartColumn => start != null ? start.x : 1;
         public int StartRow => start != null ? start.y : 3;
         public int GoalColumn => goal != null ? goal.x : 3;
@@ -77,6 +112,27 @@ namespace BOKS.Demo
         public int GridRows => grid != null && grid.rows > 0 ? grid.rows : 6;
 
         public BOKSDirection Direction => ParseDirection(startDirection);
+
+        public void NormalizeSourceFields()
+        {
+            if (levelNumber <= 0) levelNumber = number;
+            if (!string.IsNullOrEmpty(startOri)) startDirection = startOri;
+            if (grid == null) grid = new BOKSGrid();
+            if (program == null) program = new BOKSProgram();
+            if (mainSlotEnabled != null && mainSlotEnabled.Length > 0)
+                program.mainSlotEnabled = mainSlotEnabled;
+            if (fnSlotEnabled != null && fnSlotEnabled.Length > 0)
+                program.functionSlotEnabled = fnSlotEnabled;
+            if (enabledBlocks != null)
+            {
+                var commands = new System.Collections.Generic.List<string>(4);
+                if (enabledBlocks.forward) commands.Add("forward");
+                if (enabledBlocks.left) commands.Add("left");
+                if (enabledBlocks.right) commands.Add("right");
+                if (enabledBlocks.function) commands.Add("function");
+                program.enabledCommands = commands.ToArray();
+            }
+        }
 
         public int EnabledMainSlotCount
         {

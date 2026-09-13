@@ -9,6 +9,10 @@ namespace BOKS.Demo
     /// </summary>
     public static class BOKSLevelLoader
     {
+        [System.Serializable]
+        sealed class CampaignFile { public BOKSLevelDefinition[] levels; }
+
+        static BOKSLevelDefinition[] campaign;
         public static string LevelJsonPath(int levelNumber) => $"Assets/BOKS/Source/Data/level-{levelNumber:D2}.json";
 
         public static BOKSLevelDefinition FromJson(string json)
@@ -16,13 +20,38 @@ namespace BOKS.Demo
             if (string.IsNullOrWhiteSpace(json)) return null;
             try
             {
-                return JsonUtility.FromJson<BOKSLevelDefinition>(json);
+                BOKSLevelDefinition level = JsonUtility.FromJson<BOKSLevelDefinition>(json);
+                if (level != null) level.NormalizeSourceFields();
+                return level;
             }
             catch (System.Exception exception)
             {
                 Debug.LogError("[BOKS] Failed to parse level JSON: " + exception.Message);
                 return null;
             }
+        }
+
+        public static BOKSLevelDefinition[] LoadCampaign()
+        {
+            if (campaign != null) return campaign;
+            TextAsset asset = Resources.Load<TextAsset>("BOKS/Data/campaign-levels");
+            if (asset == null)
+            {
+                Debug.LogError("[BOKS] Missing Resources/BOKS/Data/campaign-levels.json");
+                return campaign = new BOKSLevelDefinition[0];
+            }
+            CampaignFile file = JsonUtility.FromJson<CampaignFile>(asset.text);
+            campaign = file != null && file.levels != null ? file.levels : new BOKSLevelDefinition[0];
+            foreach (BOKSLevelDefinition level in campaign)
+                if (level != null) level.NormalizeSourceFields();
+            return campaign;
+        }
+
+        public static BOKSLevelDefinition CampaignLevel(int levelNumber)
+        {
+            foreach (BOKSLevelDefinition level in LoadCampaign())
+                if (level != null && level.levelNumber == levelNumber) return level;
+            return null;
         }
 
         /// <summary>

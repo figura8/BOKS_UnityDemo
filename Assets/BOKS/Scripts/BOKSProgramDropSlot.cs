@@ -17,6 +17,8 @@ namespace BOKS.Demo
             enabledSlot = enabled;
         }
 
+        public void SetEnabled(bool value) => enabledSlot = value;
+
         public void OnDrop(PointerEventData eventData) => controller.RecordDropTarget(slotIndex, enabledSlot);
         public void OnPointerEnter(PointerEventData eventData) => controller.SetDropHover(slotIndex, enabledSlot, true, eventData.pointerId < 0);
         public void OnPointerExit(PointerEventData eventData) => controller.SetDropHover(slotIndex, enabledSlot, false);

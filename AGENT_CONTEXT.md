@@ -18,50 +18,56 @@ The original web BOKS implementation is the source of truth for:
 - SFX
 - UI micro-interactions
 - character turn behaviour
+- level transitions
+- bubble / character / bee VFX
 
 Do not guess when the web implementation can be inspected.
 
-## Current architecture
-- Unity 6.6
-- One data-driven gameplay system
-- Level 2 converted to BOKSLevelDefinition / JSON-driven data
-- Drag/drop command system
-- Direction state via BOKSDirection
-- Root/visual/art hierarchy for BOKS character
-- Tests currently cover Level 2 and turn behaviour
+## Current architecture (verified)
+- Unity 6.6 (6000.6.0f1)
+- One shared, data-driven gameplay system (BOKSLevel2Controller + BOKSLevelDefinition)
+- Full data-driven campaign Levels 1-10 implemented (Resources/BOKS/Data/campaign-levels.json; controller caps at 10)
+- Automatic campaign progression 1 -> 10; Level 10 completes the campaign (no Level 11)
+- Function/sub-routine command implemented (function slots expand in ExecuteProgram)
+- Left/Right/Forward turns and obstacle (blocked-move) behaviour implemented
+- Centralized audio system implemented and working (BOKSAudioManager: Music + SFX, semantic cues)
+- Source-faithful level transition implemented (BOKSLevelTransition + BOKS/Shaders/BOKSLevelTransition.shader)
+- Campaign scene: Assets/Scenes/BOKS_Campaign.unity
+- Campaign smoke test implemented (Tests/PlayMode/BOKSCampaignSmokeTests.cs)
+- Full current test suite: 27/27 passing
+- Current Unity compile state clean (0 errors)
 
 ## Important invariants
-- Do not create one controller per level.
-- Do not create one scene per level unless explicitly requested.
-- Keep existing Level 2 behaviour intact.
-- Character root position is gameplay position and must not move during turns.
-- Visual turn animation happens on the visual child.
-- Direction is logical state, not permanent transform rotation.
-- Existing timings should match web source.
+- The web game is the source of truth for behaviour, timing and data.
+- One shared gameplay system; do NOT create one controller per level.
+- Do NOT create one scene per level unless explicitly requested.
+- Levels are data-driven (BOKSLevelDefinition / JSON); keep existing Level 2 behaviour intact.
+- Character hierarchy: Root -> Visual -> Art.
+  - Root: top-left board coordinate system, centered pivot, stable during turns.
+  - Visual child carries the turn animation.
+  - Art child carries the directional sprite / fit offset.
+- Direction is logical state (BOKSDirection), not permanent transform rotation.
+- Preserve source timings and behaviour.
 - Preserve working drag/drop behaviour.
+- Avoid unrelated refactors.
 
 ## Character hierarchy
 BOKSCharacterRoot
 └── BOKS Visual
     └── BOKS Art
 
-Root:
-- top-left board coordinate system
-- centered pivot
-- stable during turn
-
-## Known current bugs / work in progress
-1. Turn command blocks lose their type after drop and become Forward.
-2. Turn execution starts from the wrong visual orientation and causes a visible pop before rotation.
-
-## Current task
-Fix only those two bugs before continuing feature work.
+## Currently deferred visual polish (do NOT start yet)
+- Goal bubble idle / pop VFX
+- BOKS eye movement / blink / idle animation
+- Bee / background animation
+- Per-level theme overrides
+- Available-block glow
+- Minor decoration fidelity (e.g. tree tinting)
 
 ## Verification requirements
 After any change:
 - compile
-- run relevant tests
-- preserve Level 2 regression
-- report files changed
-- report root cause
+- run the full test suite (currently 27 tests)
+- preserve Level 2 regression and the campaign smoke test
+- report files changed and root cause
 - avoid unrelated refactors

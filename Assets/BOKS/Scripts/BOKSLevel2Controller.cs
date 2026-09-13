@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -22,6 +23,7 @@ namespace BOKS.Demo
         public const float TurnSeconds = 1.050f;             // source TURN_MS
         public const float BlockedMoveSeconds = 0.120f;      // source blockedMoveWaitMs (effort wait before continuing)
         public const float ObstacleStruggleSeconds = 0.340f; // source obstacleShakeMs (struggle visual)
+        public const float EmptyFunctionSeconds = 0.300f;
 
         // Presentation constant: 460px board / 6 cells = 75px cell stride. Identical for every 6x6
         // level, so it stays here rather than in level data.
@@ -66,6 +68,23 @@ namespace BOKS.Demo
         int pendingDropSlot = -1;
         bool pendingDropLocked;
         int hoveredSlot = -1;
+        bool[] enabledSlots;
+
+        public event Action<BOKSLevel2Controller> LevelCompleted;
+        public event Action<BOKSLevel2Controller> GoalCelebration;
+
+        [SerializeField] BOKSGoalPopVFX goalPopVfx;
+
+        public void BindGoalPopVFX(BOKSGoalPopVFX vfx) => goalPopVfx = vfx;
+
+        BOKSGoalPopVFX GoalPopVfx
+        {
+            get
+            {
+                if (goalPopVfx == null) goalPopVfx = FindAnyObjectByType<BOKSGoalPopVFX>();
+                return goalPopVfx;
+            }
+        }
 
         // Automated tests set this to zero; normal play always uses 1.
         public float TimingScale { get; set; } = 1f;
@@ -79,6 +98,7 @@ namespace BOKS.Demo
         public bool Succeeded => succeeded;
         public bool RunResolved => runResolved;
         public bool CanEditProgram => !inputLocked;
+        public int LevelNumber => levelDefinition != null ? levelDefinition.levelNumber : 0;
 
         /// <summary>Grid-cell anchored position of the character root. Must never change during a turn.</summary>
         public Vector2 HeroRootAnchoredPosition => hero != null ? hero.anchoredPosition : Vector2.zero;
@@ -146,8 +166,27 @@ namespace BOKS.Demo
                 : Mathf.Max(1, levelDefinition.EnabledMainSlotCount);
 
             logicalProgram = new BOKSCommandType[slotCount];
+            enabledSlots = new bool[slotCount];
             for (int i = 0; i < logicalProgram.Length; i++)
+            {
                 logicalProgram[i] = BOKSCommandType.None;
+                enabledSlots[i] = commandVisuals != null && commandVisuals.Length == 12
+                    ? (i < 8 ? levelDefinition.IsMainSlotEnabled(i) : levelDefinition.IsFunctionSlotEnabled(i - 8))
+                    : true;
+            }
+        }
+
+        public void LoadLevel(BOKSLevelDefinition definition, Sprite[] sprites)
+        {
+            StopAllCoroutines();
+            levelDefinition = definition;
+            if (sprites != null && sprites.Length == 4) facingSprites = sprites;
+            InitializeFromDefinition();
+            // Reposition the root to the new start cell before caching, so CacheInitialState
+            // records the correct heroStart instead of the previous level's stale position.
+            hero.anchoredPosition = new Vector2(7 + startColumn * CellStride + 34.5f, -(7 + startRow * CellStride + 34.5f));
+            CacheInitialState();
+            RestartLevel2();
         }
 
         void Awake()
@@ -200,50 +239,48 @@ namespace BOKS.Demo
             yield return Wait(RunLeadSeconds);
 
             BOKSCommandType[] commandsToRun = (BOKSCommandType[])logicalProgram.Clone();
-            int last = LastCommandIndex(commandsToRun);
+            int last = LastCommandIndex(commandsToRun, 0, Mathf.Min(7, commandsToRun.Length - 1));
             bool won = false;
             for (int i = 0; i <= last; i++)
             {
                 SetSlotActive(i);
                 yield return Wait(SlotLeadSeconds);
 
-                if (commandsToRun[i] == BOKSCommandType.Forward)
+                if (commandsToRun[i] == BOKSCommandType.Function)
                 {
-                    Vector2Int destination = ClampToGrid(ForwardCell());
-                    if (blockedCells.Contains(destination))
-                    {
-                        // Obstacle blocks forward: character stays, brief effort struggle, queue continues.
-                        yield return MoveBlocked();
-                    }
+                    int functionLast = LastCommandIndex(commandsToRun, 8, Mathf.Min(11, commandsToRun.Length - 1));
+                    if (functionLast < 8)
+                        yield return Wait(EmptyFunctionSeconds);
                     else
                     {
-                        bool enteringGoal = destination.x == goalColumn && destination.y == goalRow;
-                        yield return MoveForward(destination, enteringGoal);
-                        if (enteringGoal)
+                        for (int fn = 8; fn <= functionLast; fn++)
                         {
-                            won = true;
-                            break;
+                            SetSlotActive(fn);
+                            yield return Wait(SlotLeadSeconds);
+                            if (commandsToRun[fn] != BOKSCommandType.None)
+                            {
+                                bool commandWon = false;
+                                yield return ExecuteCommand(commandsToRun[fn], value => commandWon = value);
+                                if (commandWon) { won = true; break; }
+                                yield return Wait(PostCommandSeconds);
+                            }
+                            else yield return Wait(PostCommandSeconds);
                         }
-                        yield return Wait(NonGoalSettleSeconds);
+                        if (won) break;
                     }
-                    yield return Wait(PostCommandSeconds);
-                }
-                else if (commandsToRun[i] == BOKSCommandType.Left)
-                {
-                    yield return Turn(TurnLeft(facing), -90f);
-                    yield return Wait(PostCommandSeconds);
-                }
-                else if (commandsToRun[i] == BOKSCommandType.Right)
-                {
-                    yield return Turn(TurnRight(facing), 90f);
-                    yield return Wait(PostCommandSeconds);
                 }
                 else if (commandsToRun[i] == BOKSCommandType.None)
                 {
                     // Empty interior slots consume the same extra STEP_MS as the web queue.
                     yield return Wait(PostCommandSeconds);
                 }
-                // Function commands are introduced in Level 6+ (Phase 3).
+                else
+                {
+                    bool commandWon = false;
+                    yield return ExecuteCommand(commandsToRun[i], value => commandWon = value);
+                    if (commandWon) { won = true; break; }
+                    yield return Wait(PostCommandSeconds);
+                }
             }
 
             ClearExecutionHighlights();
@@ -261,6 +298,7 @@ namespace BOKS.Demo
                 // Level transitions/redraw are intentionally not implemented yet, so placed commands
                 // remain visible until the next redraw, matching the source's campaign flow.
                 runResolved = true;
+                LevelCompleted?.Invoke(this);
                 yield break;
             }
 
@@ -273,9 +311,29 @@ namespace BOKS.Demo
             runResolved = true;
         }
 
-        int LastCommandIndex(BOKSCommandType[] commands)
+        IEnumerator ExecuteCommand(BOKSCommandType command, Action<bool> completion)
         {
-            for (int i = commands.Length - 1; i >= 0; i--)
+            bool won = false;
+            if (command == BOKSCommandType.Forward)
+            {
+                Vector2Int destination = ClampToGrid(ForwardCell());
+                if (blockedCells.Contains(destination)) yield return MoveBlocked();
+                else
+                {
+                    bool enteringGoal = destination.x == goalColumn && destination.y == goalRow;
+                    yield return MoveForward(destination, enteringGoal);
+                    won = enteringGoal;
+                    if (!enteringGoal) yield return Wait(NonGoalSettleSeconds);
+                }
+            }
+            else if (command == BOKSCommandType.Left) yield return Turn(TurnLeft(facing), -90f);
+            else if (command == BOKSCommandType.Right) yield return Turn(TurnRight(facing), 90f);
+            completion(won);
+        }
+
+        int LastCommandIndex(BOKSCommandType[] commands, int first, int last)
+        {
+            for (int i = Mathf.Min(last, commands.Length - 1); i >= first; i--)
                 if (commands[i] != BOKSCommandType.None) return i;
             return -1;
         }
@@ -316,8 +374,10 @@ namespace BOKS.Demo
         {
             yield return Wait(MoveSeconds * .20f);
             BOKSAudioManager.Play(BOKSAudioCue.BubblePop);
+            GoalPopVfx?.Play(CellScreenPosition(new Vector2Int(goalColumn, goalRow)));
             yield return Wait(1f - MoveSeconds * .20f);
             BOKSAudioManager.Play(BOKSAudioCue.LevelComplete);
+            GoalCelebration?.Invoke(this);
         }
 
         /// <summary>Blocked forward: the character stays put; a short struggle plays and the queue continues.</summary>
@@ -585,6 +645,8 @@ namespace BOKS.Demo
         public bool TryPlaceCommand(int targetSlot, BOKSCommandType command)
         {
             if (inputLocked || targetSlot < 0 || targetSlot >= logicalProgram.Length) return false;
+            if (enabledSlots != null && targetSlot < enabledSlots.Length && !enabledSlots[targetSlot]) return false;
+            if (levelDefinition != null && !levelDefinition.IsCommandEnabled(command)) return false;
             // Palette prototypes are unlimited and replace destination contents in the web game.
             logicalProgram[targetSlot] = command;
             RefreshCommandVisuals();
@@ -748,6 +810,7 @@ namespace BOKS.Demo
         public void RestartLevel2()
         {
             StopAllCoroutines();
+            GoalPopVfx?.Reset();
             activeDrag = null;
             pendingDropSlot = -1;
             ClearDropHover();
@@ -766,6 +829,13 @@ namespace BOKS.Demo
             SetRunPressed(false);
             SetPaletteGlow(true);
             ClearExecutionHighlights();
+        }
+
+        public void SetCampaignInputLocked(bool locked)
+        {
+            inputLocked = locked;
+            SetPaletteInteractable(!locked);
+            if (playButton != null) playButton.interactable = !locked;
         }
 
         void CacheInitialState()
