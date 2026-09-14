@@ -105,6 +105,11 @@ namespace BOKS.Demo
         {
             IsRunning = true;
             RefreshScreenMetrics();
+
+            // The first alpha-faded frame must already contain the full-screen hole. Previously
+            // this state was assigned only after the fade, exposing the solid fill on first use.
+            SetHoleEnabled(true);
+            SetHole(fullScale, 0f);
             fill.gameObject.SetActive(true);
             blocker.blocksRaycasts = true;
 
@@ -113,8 +118,6 @@ namespace BOKS.Demo
             blocker.alpha = 1f;
 
             // Close: hole shrinks from fullScale to MinScale with the source rotation keyframes.
-            SetHoleEnabled(true);
-            SetHole(fullScale, 0f);
             yield return Animate(CloseSeconds, p =>
             {
                 float t = Ease(p);

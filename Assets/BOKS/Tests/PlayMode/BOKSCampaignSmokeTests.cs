@@ -83,6 +83,49 @@ namespace BOKS.Tests
                 "Level 10 must not continue to a level 11.");
         }
 
+        [UnityTest]
+        public IEnumerator Level6_FunctionBlock_IsRejectedByFunctionSlots()
+        {
+            Assert.That(campaign.ApplyLevel(6), Is.True, "Function level 6 should load.");
+            yield return null;
+
+            // Drag/drop funnels through these controller calls, so they carry the slot rules:
+            // main slots (0-7) accept Function, function slots (8-11) accept Forward/Left/Right only.
+            Assert.That(controller.TryPlaceCommand(0, BOKSCommandType.Function), Is.True, "Main slots accept Function.");
+            Assert.That(controller.TryPlaceCommand(8, BOKSCommandType.Function), Is.False, "Function slots reject the Function block.");
+            Assert.That(controller.IsSlotFilled(8), Is.False, "The rejected Function must not occupy the function slot.");
+            Assert.That(controller.TryPlaceCommand(8, BOKSCommandType.Forward), Is.True, "Function slots still accept Forward.");
+            Assert.That(controller.TryMovePlacedCommand(0, 8), Is.False, "A placed Function cannot be dragged into a function slot.");
+            Assert.That(controller.IsSlotFilled(0), Is.True, "The rejected move leaves the Function in its main slot.");
+        }
+
+        [UnityTest]
+        public IEnumerator MicroAnimations_EyesBubbleIdleAndRebuke_AreWiredAndGatedByRuns()
+        {
+            // Blink overlay: built from the source SVG eye geometry of the current facing sprite.
+            Assert.That(controller.HeroEyeOverlayVisible, Is.True, "The hero sprite has no eye overlay.");
+            Assert.That(controller.HeroEyesSquinting, Is.False, "The eyes start open.");
+
+            // Goal bubble idle lives on the goal root and cached its per-level rest pose.
+            BOKSGoalBubbleIdle idle = UnityEngine.Object.FindAnyObjectByType<BOKSGoalBubbleIdle>();
+            Assert.That(idle, Is.Not.Null, "The goal bubble idle is missing from BOKS_Campaign.");
+            Assert.That(idle.RestPoseCaptured, Is.True, "The goal bubble idle did not cache its rest pose.");
+
+            // While a run owns the input, taps are ignored (source: running || animating).
+            controller.SetCampaignInputLocked(true);
+            Assert.That(controller.TriggerHeroRebuke(), Is.False, "Taps must be ignored while a run owns the input.");
+            controller.SetCampaignInputLocked(false);
+
+            // Touch rebuke: shake/squash plus the annoyed cue, with the reaction squint override.
+            Assert.That(controller.TriggerHeroRebuke(), Is.True, "A tap on the hero should rebuke.");
+            Assert.That(controller.HeroRebuking, Is.True, "The 560 ms rebuke shake should be playing.");
+            Assert.That(controller.HeroEyesSquinting, Is.True, "The rebuke squint must override the blink.");
+            Assert.That(controller.TriggerHeroRebuke(), Is.False, "The 950 ms cooldown must reject a second tap.");
+
+            yield return null;
+            Assert.That(controller.HeroRebuking, Is.True, "The rebuke shake is still running one frame later.");
+        }
+
         void PlaceSolution(BOKSCommandType[] main, BOKSCommandType[] fn)
         {
             for (int i = 0; i < main.Length; i++)

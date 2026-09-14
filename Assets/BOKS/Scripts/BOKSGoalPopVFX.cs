@@ -41,33 +41,13 @@ namespace BOKS.Demo
             EnsureAssets();
             StopAllCoroutines();
             DeactivateAll();
-            CanvasGroup fade = GetOrAddGoalBubbleFade();
-            if (fade != null) fade.alpha = 0f;
+            if (bubbleFade != null) bubbleFade.alpha = 0f;
             StartCoroutine(Run(centre));
         }
 
         public void Reset()
         {
-            CanvasGroup fade = GetOrAddGoalBubbleFade();
-            if (fade != null) fade.alpha = 1f;
-        }
-
-        CanvasGroup GetOrAddGoalBubbleFade()
-        {
-            if (bubbleFade != null) return bubbleFade;
-            Transform grid = transform.parent;
-            if (grid == null) return null;
-            for (int i = 0; i < grid.childCount; i++)
-            {
-                Transform child = grid.GetChild(i);
-                if (child.name.StartsWith("Goal Bubble", System.StringComparison.Ordinal))
-                {
-                    bubbleFade = child.GetComponent<CanvasGroup>();
-                    if (bubbleFade == null) bubbleFade = child.gameObject.AddComponent<CanvasGroup>();
-                    return bubbleFade;
-                }
-            }
-            return null;
+            if (bubbleFade != null) bubbleFade.alpha = 1f;
         }
 
         void OnDestroy()

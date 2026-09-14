@@ -19,6 +19,8 @@ namespace BOKS.Demo
         BlockedMove,
         Failure,
         BoksAnnoyed,
+        DecorationRubberTap01,
+        DecorationRubberTap02,
         GoalBounce,
         BubblePop,
         LevelComplete,
@@ -71,6 +73,8 @@ namespace BOKS.Demo
                 { BOKSAudioCue.BlockedMove, new CueDefinition("sfx/gameplay/effort", "effort.mp3", .24f, BOKSAudioPlaybackMode.Restart) },
                 { BOKSAudioCue.Failure, new CueDefinition("sfx/gameplay/error_action", "error_action.mp3", .30f, BOKSAudioPlaybackMode.OneShot) },
                 { BOKSAudioCue.BoksAnnoyed, new CueDefinition("sfx/gameplay/boks_annoyed", "boks_annoyed.ogg", .34f, BOKSAudioPlaybackMode.OneShot) },
+                { BOKSAudioCue.DecorationRubberTap01, new CueDefinition("sfx/gameplay/decor_rubber_tap_01", "decor_rubber_tap_01.ogg", .26f, BOKSAudioPlaybackMode.OneShot) },
+                { BOKSAudioCue.DecorationRubberTap02, new CueDefinition("sfx/gameplay/decor_rubber_tap_02", "decor_rubber_tap_02.ogg", .26f, BOKSAudioPlaybackMode.OneShot) },
                 { BOKSAudioCue.GoalBounce, new CueDefinition("sfx/gameplay/goal_bubble_bounce", "goal_bubble_bounce.ogg", .28f, BOKSAudioPlaybackMode.OneShot) },
                 { BOKSAudioCue.BubblePop, new CueDefinition("sfx/gameplay/bubble_pop_main", "bubble_pop_main.ogg", .26f, BOKSAudioPlaybackMode.OneShot) },
                 { BOKSAudioCue.LevelComplete, new CueDefinition("sfx/gameplay/level_complete_main", "level_complete_main.mp3", .50f, BOKSAudioPlaybackMode.OneShot) },
@@ -190,6 +194,14 @@ namespace BOKS.Demo
         {
             BOKSAudioManager manager = EnsureInstance();
             if (manager != null) manager.PlayCue(cue);
+        }
+
+        /// <summary>Matches web playDecorationRubberSfx: random one-shot of the two source variants.</summary>
+        public static void PlayDecorationRubberTap()
+        {
+            Play(UnityEngine.Random.value < .5f
+                ? BOKSAudioCue.DecorationRubberTap01
+                : BOKSAudioCue.DecorationRubberTap02);
         }
 
         public void PlayCue(BOKSAudioCue cue)

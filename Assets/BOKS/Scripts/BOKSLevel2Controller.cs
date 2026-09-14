@@ -24,6 +24,11 @@ namespace BOKS.Demo
         public const float BlockedMoveSeconds = 0.120f;      // source blockedMoveWaitMs (effort wait before continuing)
         public const float ObstacleStruggleSeconds = 0.340f; // source obstacleShakeMs (struggle visual)
         public const float EmptyFunctionSeconds = 0.300f;
+        // Source goal eye reaction (runtime-rules.json goal.*): the eyes close 90 ms into the goal
+        // move (impactFromMoveStartMs) and reopen 920 ms after the pop at 210 ms (popFromMoveStartMs
+        // + eyeReopenFromPopStartMs), i.e. 1130 ms into the move.
+        public const float GoalEyeImpactSeconds = 0.090f;
+        public const float GoalEyeReopenSeconds = 1.130f;
 
         // Presentation constant: 460px board / 6 cells = 75px cell stride. Identical for every 6x6
         // level, so it stays here rather than in level data.
@@ -72,19 +77,19 @@ namespace BOKS.Demo
 
         public event Action<BOKSLevel2Controller> LevelCompleted;
         public event Action<BOKSLevel2Controller> GoalCelebration;
+        /// <summary>Presentation-only notification after a completed forward move.</summary>
+        public event Action<int, int> HeroEnteredCell;
+        public event Action<int> MainCommandPlaced;
+        public event Action PlayPressed;
 
         [SerializeField] BOKSGoalPopVFX goalPopVfx;
 
+        BOKSCharacterBlink heroBlink;
+        BOKSCharacterRebuke heroRebuke;
+
         public void BindGoalPopVFX(BOKSGoalPopVFX vfx) => goalPopVfx = vfx;
 
-        BOKSGoalPopVFX GoalPopVfx
-        {
-            get
-            {
-                if (goalPopVfx == null) goalPopVfx = FindAnyObjectByType<BOKSGoalPopVFX>();
-                return goalPopVfx;
-            }
-        }
+        BOKSGoalPopVFX GoalPopVfx => goalPopVfx;
 
         // Automated tests set this to zero; normal play always uses 1.
         public float TimingScale { get; set; } = 1f;
@@ -99,12 +104,25 @@ namespace BOKS.Demo
         public bool RunResolved => runResolved;
         public bool CanEditProgram => !inputLocked;
         public int LevelNumber => levelDefinition != null ? levelDefinition.levelNumber : 0;
+        public Button PlayButton => playButton;
 
         /// <summary>Grid-cell anchored position of the character root. Must never change during a turn.</summary>
         public Vector2 HeroRootAnchoredPosition => hero != null ? hero.anchoredPosition : Vector2.zero;
 
         /// <summary>Name of the currently displayed directional sprite (test/observability hook).</summary>
         public string HeroSpriteName => (heroArt != null && heroArt.sprite != null) ? heroArt.sprite.name : string.Empty;
+
+        /// <summary>True when the current facing sprite carries the procedural eye overlay.</summary>
+        public bool HeroEyeOverlayVisible => heroBlink != null && heroBlink.OverlayVisible;
+
+        /// <summary>True while a reaction holds the eyes squinted instead of blinking.</summary>
+        public bool HeroEyesSquinting => heroBlink != null && heroBlink.Squinting;
+
+        /// <summary>True while the 560 ms touch-rebuke shake/squash is playing.</summary>
+        public bool HeroRebuking => heroRebuke != null && heroRebuke.Rebuking;
+
+        /// <summary>Taps the hero exactly like a pointer-down on the cell would (test/UI hook).</summary>
+        public bool TriggerHeroRebuke() => heroRebuke != null && heroRebuke.Trigger();
 
         public void Configure(BOKSLevelDefinition definition, RectTransform heroTransform, Image heroArtImage, RectTransform heroVisualTransform, Sprite[] sprites,
             Button[] buttons, Button play, GameObject[] commands, BOKSShapeGraphic[] wells, BOKSShapeGraphic[] dots,
@@ -124,6 +142,7 @@ namespace BOKS.Demo
             runShell = shell;
             paletteGlowLayers = glows;
 
+            EnsureMicroAnimations();
             InitializeFromDefinition();
 
             heroStart = hero.anchoredPosition;
@@ -135,6 +154,31 @@ namespace BOKS.Demo
             {
                 wellTop[i] = enabledSlotWells[i].topColor;
                 wellBottom[i] = enabledSlotWells[i].bottomColor;
+            }
+        }
+
+        /// <summary>
+        /// Installs the micro-animation layer on the existing hero hierarchy: the eye overlay lives
+        /// inside "BOKS Art" (the directional fit node) and the touch rebuke shakes "BOKS Visual"
+        /// (the web .boks-hero equivalent). Idempotent, so scene-built and runtime refs both work.
+        /// </summary>
+        void EnsureMicroAnimations()
+        {
+            if (heroArt != null)
+            {
+                if (heroBlink == null) heroBlink = heroArt.GetComponent<BOKSCharacterBlink>();
+                if (heroBlink == null) heroBlink = heroArt.gameObject.AddComponent<BOKSCharacterBlink>();
+                heroBlink.Bind(heroArt);
+            }
+
+            // The rendered Art image is the raycast target (and already owns the existing annoyed
+            // audio cue). Place the visual-only reaction handler there so pointer-down reaches it,
+            // while its transforms continue to target the Visual child, never the logical root.
+            if (heroArt != null)
+            {
+                if (heroRebuke == null) heroRebuke = heroArt.GetComponent<BOKSCharacterRebuke>();
+                if (heroRebuke == null) heroRebuke = heroArt.gameObject.AddComponent<BOKSCharacterRebuke>();
+                heroRebuke.Bind(this, heroVisual, heroBlink);
             }
         }
 
@@ -191,6 +235,7 @@ namespace BOKS.Demo
 
         void Awake()
         {
+            EnsureMicroAnimations();
             InitializeFromDefinition();
             CacheInitialState();
             playButton.onClick.AddListener(Play);
@@ -230,6 +275,7 @@ namespace BOKS.Demo
             playButton.interactable = false;
             SetRunPressed(true);
             BOKSAudioManager.Play(BOKSAudioCue.PlayPressed);
+            PlayPressed?.Invoke();
             StartCoroutine(ExecuteProgram());
             return true;
         }
@@ -341,7 +387,11 @@ namespace BOKS.Demo
         IEnumerator MoveForward(Vector2Int destination, bool enteringGoal)
         {
             BOKSAudioManager.Play(BOKSAudioCue.ForwardStep);
-            if (enteringGoal) StartCoroutine(PlayGoalAudioSequence());
+            if (enteringGoal)
+            {
+                StartCoroutine(PlayGoalAudioSequence());
+                StartCoroutine(PlayGoalEyeSquint());
+            }
 
             Vector2 from = hero.anchoredPosition;
             Vector2 to = CellScreenPosition(destination);
@@ -366,6 +416,7 @@ namespace BOKS.Demo
 
             heroColumn = destination.x;
             heroRow = destination.y;
+            HeroEnteredCell?.Invoke(heroColumn, heroRow);
             if (enteringGoal)
                 yield return Wait(GoalResolutionSeconds - MoveSeconds);
         }
@@ -380,6 +431,16 @@ namespace BOKS.Demo
             GoalCelebration?.Invoke(this);
         }
 
+        /// <summary>
+        /// Source goal eye reaction: the eyes squint from 90 ms into the goal move (impact) until
+        /// 920 ms after the pop at 210 ms, i.e. 1130 ms into the move (MicroAnimationSpec.md 5c).
+        /// </summary>
+        IEnumerator PlayGoalEyeSquint()
+        {
+            yield return Wait(GoalEyeImpactSeconds);
+            heroBlink?.SquintFor(GoalEyeReopenSeconds - GoalEyeImpactSeconds);
+        }
+
         /// <summary>Blocked forward: the character stays put; a short struggle plays and the queue continues.</summary>
         IEnumerator MoveBlocked()
         {
@@ -390,6 +451,8 @@ namespace BOKS.Demo
 
         IEnumerator ObstacleStruggle()
         {
+            // Source: [data-obstacle-struggle] also holds the eyes squinted for the same 340 ms.
+            heroBlink?.SquintFor(ObstacleStruggleSeconds);
             float duration = ObstacleStruggleSeconds * Mathf.Max(0f, TimingScale);
             if (duration <= 0f) yield break;
             // Shake the visual child, not the grid root, so the root's cell position stays stable.
@@ -507,6 +570,8 @@ namespace BOKS.Demo
             }
             if (heroVisual != null)
                 heroVisual.localRotation = Quaternion.identity;
+            // The eye overlay is per-sprite geometry (source SVG eye/pupil positions per direction).
+            if (heroBlink != null) heroBlink.ApplySprite();
         }
 
         Vector2Int ForwardCell()
@@ -619,7 +684,13 @@ namespace BOKS.Demo
 
         void SetPaletteGlow(bool visible)
         {
-            foreach (GameObject glow in paletteGlowLayers) glow.SetActive(visible);
+            for (int i = 0; i < paletteGlowLayers.Length; i++)
+            {
+                int paletteIndex = i / 3;
+                bool show = visible && levelDefinition != null && levelDefinition.glowEnabled
+                    && paletteIndex < paletteButtons.Length && paletteButtons[paletteIndex].gameObject.activeSelf;
+                paletteGlowLayers[i].SetActive(show);
+            }
         }
 
         void ClearLogicalProgramOnly()
@@ -642,14 +713,23 @@ namespace BOKS.Demo
 
         public bool TryPlacePaletteCommand(int targetSlot) => TryPlaceCommand(targetSlot, BOKSCommandType.Forward);
 
+        /// <summary>
+        /// Slot rule: main slots (0-7) accept Forward, Left, Right and Function; function slots (8-11)
+        /// are sub-routine slots and accept Forward, Left and Right only.
+        /// </summary>
+        static bool IsAllowedInSlot(int slotIndex, BOKSCommandType command) =>
+            command != BOKSCommandType.Function || slotIndex < 8;
+
         public bool TryPlaceCommand(int targetSlot, BOKSCommandType command)
         {
             if (inputLocked || targetSlot < 0 || targetSlot >= logicalProgram.Length) return false;
             if (enabledSlots != null && targetSlot < enabledSlots.Length && !enabledSlots[targetSlot]) return false;
+            if (!IsAllowedInSlot(targetSlot, command)) return false;
             if (levelDefinition != null && !levelDefinition.IsCommandEnabled(command)) return false;
             // Palette prototypes are unlimited and replace destination contents in the web game.
             logicalProgram[targetSlot] = command;
             RefreshCommandVisuals();
+            if (targetSlot < 8) MainCommandPlaced?.Invoke(targetSlot);
             return true;
         }
 
@@ -658,6 +738,9 @@ namespace BOKS.Demo
             if (inputLocked || sourceSlot < 0 || sourceSlot >= logicalProgram.Length ||
                 targetSlot < 0 || targetSlot >= logicalProgram.Length || logicalProgram[sourceSlot] == BOKSCommandType.None) return false;
             if (sourceSlot == targetSlot) return true;
+            // A swap must never end with a Function block inside a function slot (from either side).
+            if (!IsAllowedInSlot(targetSlot, logicalProgram[sourceSlot]) ||
+                !IsAllowedInSlot(sourceSlot, logicalProgram[targetSlot])) return false;
             BOKSCommandType destination = logicalProgram[targetSlot];
             logicalProgram[targetSlot] = logicalProgram[sourceSlot];
             logicalProgram[sourceSlot] = destination;
@@ -811,6 +894,8 @@ namespace BOKS.Demo
         {
             StopAllCoroutines();
             GoalPopVfx?.Reset();
+            heroRebuke?.Cancel();
+            heroBlink?.ClearSquint();
             activeDrag = null;
             pendingDropSlot = -1;
             ClearDropHover();
@@ -860,7 +945,11 @@ namespace BOKS.Demo
             return count;
         }
 
-        static float CubicBezierYForX(float x, float x1, float y1, float x2, float y2)
+        /// <summary>
+        /// Cubic-bezier (x1, y1, x2, y2) easing evaluated as y for x, matching the CSS timing
+        /// functions used by the source keyframes. Shared with the micro-animation components.
+        /// </summary>
+        internal static float CubicBezierYForX(float x, float x1, float y1, float x2, float y2)
         {
             float low = 0f;
             float high = 1f;

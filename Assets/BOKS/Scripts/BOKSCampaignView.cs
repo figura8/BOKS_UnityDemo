@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 namespace BOKS.Demo
 {
@@ -18,12 +19,33 @@ namespace BOKS.Demo
         [SerializeField] Sprite treeSprite;
         [SerializeField] Sprite daisySprite;
         [SerializeField] Sprite beeSprite;
+        readonly List<BOKSDecorationReaction> decorationReactions = new List<BOKSDecorationReaction>();
+        BOKSLevel1Onboarding onboarding;
 
         readonly BOKSCommandType[] paletteOrder = {
             BOKSCommandType.Forward, BOKSCommandType.Left, BOKSCommandType.Right, BOKSCommandType.Function
         };
 
         public BOKSLevel2Controller Gameplay => gameplay;
+
+        // Configure is an editor scene-builder API. At runtime Unity restores the serialized
+        // references directly, so the onboarding component must be installed/bound here as well.
+        void Awake() => EnsureRuntimeBindings();
+
+        void EnsureRuntimeBindings()
+        {
+            if (gameplay == null || paletteButtons == null || paletteButtons.Length == 0 || slotRoots == null) return;
+            gameplay.HeroEnteredCell -= TriggerDecorationReactionsAt;
+            gameplay.HeroEnteredCell += TriggerDecorationReactionsAt;
+            onboarding = GetComponent<BOKSLevel1Onboarding>();
+            if (onboarding == null) onboarding = gameObject.AddComponent<BOKSLevel1Onboarding>();
+            onboarding.Bind(gameplay, (RectTransform)transform, paletteButtons[0], slotRoots, gameplay.PlayButton);
+
+            // CampaignController may have loaded Level 1 in its Awake before this component's
+            // Awake created the onboarding. Start that already-loaded first-level state here;
+            // normal level loads still start it from ApplyLevel below.
+            if (gameplay.LevelNumber == 1) onboarding.Begin(true);
+        }
 
         public void Configure(BOKSLevel2Controller controller, RectTransform gridRoot, RectTransform goalRoot,
             RectTransform objects, RectTransform overlays, RectTransform[] slots, Button[] buttons, GameObject[] glows,
@@ -41,16 +63,19 @@ namespace BOKS.Demo
             treeSprite = tree;
             daisySprite = daisy;
             beeSprite = bee;
+            EnsureRuntimeBindings();
         }
 
         public void ApplyLevel(BOKSLevelDefinition level)
         {
             ClearDynamicLayer(objectLayer);
             ClearDynamicLayer(overlayLayer);
+            decorationReactions.Clear();
             ClearOldObstacles();
 
             goal.anchoredPosition = new Vector2(6 + level.GoalColumn * 75f + 35.5f - 54f,
                 -(6 + level.GoalRow * 75f + 35.5f - 54f));
+            ApplyGoalIdle();
 
             for (int i = 0; i < slotRoots.Length; i++)
             {
@@ -73,8 +98,14 @@ namespace BOKS.Demo
 
             for (int i = 0; i < paletteButtons.Length && i < paletteOrder.Length; i++)
                 paletteButtons[i].gameObject.SetActive(level.IsCommandEnabled(paletteOrder[i]));
-            bool showGlow = level.glowEnabled;
-            foreach (GameObject glow in paletteGlowLayers) if (glow != null) glow.SetActive(showGlow);
+            // The web applies its available-block glow only to enabled palette blocks. The scene
+            // keeps each block's three glow circles as command-area siblings, so gate each group.
+            for (int i = 0; i < paletteGlowLayers.Length; i++)
+            {
+                int paletteIndex = i / 3;
+                bool showGlow = level.glowEnabled && paletteIndex < paletteButtons.Length && paletteButtons[paletteIndex].gameObject.activeSelf;
+                if (paletteGlowLayers[i] != null) paletteGlowLayers[i].SetActive(showGlow);
+            }
 
             if (level.obstacles != null)
                 foreach (BOKSGridCell cell in level.obstacles)
@@ -84,6 +115,19 @@ namespace BOKS.Demo
                     if (decoration != null) AddDecoration(decoration);
 
             gameplay.LoadLevel(level, SpritesFor(level.characterId));
+            onboarding?.Begin(level.levelNumber == 1);
+        }
+
+        /// <summary>
+        /// Installs/refreshes the source goal-bubble idle (drift, pulse, wobble, glow) on the goal
+        /// root. The rest pose must be re-cached after the per-level reposition.
+        /// </summary>
+        void ApplyGoalIdle()
+        {
+            if (goal == null) return;
+            BOKSGoalBubbleIdle idle = goal.GetComponent<BOKSGoalBubbleIdle>();
+            if (idle == null) idle = goal.gameObject.AddComponent<BOKSGoalBubbleIdle>();
+            idle.CaptureRestPose();
         }
 
         Sprite[] SpritesFor(string characterId)
@@ -136,10 +180,14 @@ namespace BOKS.Demo
                     RectTransform rt = NewCentredRect(d.asset + " " + i, parent,
                         d.anchorX * 460f + offset.x, -d.anchorY * 460f + offset.y,
                         baseSize * Mathf.Max(.1f, d.scale), baseSize * Mathf.Max(.1f, d.scale));
-                    Image image = rt.gameObject.AddComponent<Image>();
-                    image.sprite = sprite;
-                    image.preserveAspect = true;
-                    image.raycastTarget = false;
+                    if (d.asset == "bee_hover") rt.gameObject.AddComponent<BOKSBeeHover>().Build(rt.rect.width, i, count, d.anchorX, d.anchorY);
+                    else
+                    {
+                        Image image = rt.gameObject.AddComponent<Image>();
+                        image.sprite = sprite;
+                        image.preserveAspect = true;
+                        AddDecorationReaction(rt, d);
+                    }
                 }
             }
         }
@@ -153,6 +201,25 @@ namespace BOKS.Demo
             shape.bottomColor = new Color32(139, 105, 69, 255);
             shape.cornerRadius = 5f;
             shape.raycastTarget = false;
+            AddDecorationReaction(rt, d);
+        }
+
+        void AddDecorationReaction(RectTransform target, BOKSDecoration decoration)
+        {
+            BOKSDecorationReaction reaction = target.gameObject.AddComponent<BOKSDecorationReaction>();
+            reaction.Configure(decoration.x, decoration.y);
+            decorationReactions.Add(reaction);
+        }
+
+        void TriggerDecorationReactionsAt(int column, int row)
+        {
+            foreach (BOKSDecorationReaction reaction in decorationReactions)
+                if (reaction != null && reaction.Column == column && reaction.Row == row) reaction.Trigger();
+        }
+
+        void OnDestroy()
+        {
+            if (gameplay != null) gameplay.HeroEnteredCell -= TriggerDecorationReactionsAt;
         }
 
         static RectTransform NewRect(string name, RectTransform parent, float x, float y, float w, float h)
