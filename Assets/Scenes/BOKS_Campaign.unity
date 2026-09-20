@@ -5004,7 +5004,7 @@ GameObject:
   - component: {fileID: 405059305}
   - component: {fileID: 405059306}
   m_Layer: 0
-  m_Name: Level 2 Board - 6 x 6
+  m_Name: BOKS Board - 6 x 6
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5495,7 +5495,7 @@ GameObject:
   - component: {fileID: 468975795}
   - component: {fileID: 468975794}
   m_Layer: 0
-  m_Name: Panel
+  m_Name: Command Area Surface
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -11733,7 +11733,7 @@ GameObject:
   - component: {fileID: 985493801}
   - component: {fileID: 985493800}
   m_Layer: 0
-  m_Name: Play Button - Eight Dot HUD
+  m_Name: BOKS Run Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -11863,7 +11863,7 @@ GameObject:
   - component: {fileID: 986136346}
   - component: {fileID: 986136347}
   m_Layer: 0
-  m_Name: Command Area
+  m_Name: BOKS Command Palette
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -18171,7 +18171,7 @@ GameObject:
   - component: {fileID: 1457340339}
   - component: {fileID: 1457340340}
   m_Layer: 0
-  m_Name: Header - Original BOKS Logo
+  m_Name: BOKS Gameplay Header
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -18984,7 +18984,7 @@ GameObject:
   - component: {fileID: 1501944819}
   - component: {fileID: 1501944818}
   m_Layer: 0
-  m_Name: Panel
+  m_Name: Program Slots Surface
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -21803,7 +21803,7 @@ GameObject:
   - component: {fileID: 1826163841}
   - component: {fileID: 1826163842}
   m_Layer: 0
-  m_Name: Program Slots - Static
+  m_Name: BOKS Program Area
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -21854,7 +21854,7 @@ GameObject:
   - component: {fileID: 1828482155}
   - component: {fileID: 1828482154}
   m_Layer: 0
-  m_Name: Portrait Layout (520 x 1000)
+  m_Name: BOKS Gameplay Board
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -24082,7 +24082,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: dd592c4e65f3e204d914a840e15ef616, type: 3}
+  m_Sprite: {fileID: 7465518780093689404, guid: dd592c4e65f3e204d914a840e15ef616, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -24187,7 +24187,7 @@ GameObject:
   - component: {fileID: 1932659185}
   - component: {fileID: 1932659184}
   m_Layer: 0
-  m_Name: BOKS Level 2
+  m_Name: BOKS Campaign UI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

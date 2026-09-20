@@ -9,10 +9,22 @@
 [Mm]emoryCaptures/
 [Rr]ecordings/
 
+# Unity build and generated player output
+[Bb]uild/
+[Bb]uilds/
+[Ee]xportedObj/
+[Ii]l2cpp[Bb]uild[Cc]ache/
+[Ii]l2cpp[Oo]utput/
+[Ii]l2cpp[_-][Oo]utput/
+*_BackUpThisFolder_ButDontShipItWithYourGame/
+*_BurstDebugInformation_DoNotShip/
+*_DoNotShip/
+
 # IDE and generated project files
 .vs/
 .idea/
 .vscode/
+.utmp/
 *.csproj
 *.unityproj
 *.sln
@@ -34,6 +46,8 @@ ExportedObj/
 sysinfo.txt
 .DS_Store
 Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
 # Build artifacts
 *.apk
@@ -45,7 +59,7 @@ Thumbs.db
 crashlytics-build.properties
 
 # Local visual verification captures (not runtime assets)
-Assets/BOKS/Generated/Level2_*.png
-Assets/BOKS/Generated/Level2_*.png.meta
-Assets/BOKS/Generated/Phase2_turnfix_before.png
-Assets/BOKS/Generated/Phase2_turnfix_before.png.meta
+Assets/BOKS/RuntimeAssets/Level2_*.png
+Assets/BOKS/RuntimeAssets/Level2_*.png.meta
+Assets/BOKS/RuntimeAssets/Phase2_turnfix_before.png
+Assets/BOKS/RuntimeAssets/Phase2_turnfix_before.png.meta

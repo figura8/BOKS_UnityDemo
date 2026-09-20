@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_5" data-name="Layer 5" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 256 237.59">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #81653c;
+      }
+
+      .cls-2 {
+        fill: #8e7043;
+      }
+
+      .cls-3 {
+        fill: #937445;
+      }
+
+      .cls-4 {
+        fill: none;
+      }
+
+      .cls-5 {
+        fill: #896c40;
+      }
+
+      .cls-6 {
+        fill: #e9b76d;
+      }
+
+      .cls-7 {
+        isolation: isolate;
+      }
+
+      .cls-8 {
+        fill: #84683e;
+      }
+
+      .cls-9 {
+        clip-path: url(#clippath);
+      }
+    </style>
+    <clipPath id="clippath">
+      <path class="cls-4" d="M229.44,181.42v17.1c0,31.36-39.56,37.74-41.64,38.07v-17.1c2.08-.34,41.64-6.72,41.64-38.07Z"/>
+    </clipPath>
+  </defs>
+  <g class="cls-7">
+    <g class="cls-7">
+      <g class="cls-9">
+        <g class="cls-7">
+          <path class="cls-3" d="M229.44,181.42v17.1c0,5.6-1.26,10.4-3.34,14.51v-17.1c2.08-4.11,3.34-8.91,3.34-14.51"/>
+          <path class="cls-2" d="M226.1,195.92v17.1c-1.43,2.82-3.24,5.32-5.31,7.53v-17.1c2.06-2.21,3.88-4.71,5.31-7.53"/>
+          <path class="cls-5" d="M220.79,203.45v17.1c-2.67,2.86-5.75,5.23-8.93,7.2v-17.1c3.18-1.97,6.26-4.34,8.93-7.2"/>
+          <path class="cls-8" d="M211.86,210.65v17.1c-10.86,6.71-22.94,8.66-24.07,8.84v-17.1c1.13-.18,13.21-2.13,24.07-8.84"/>
+        </g>
+      </g>
+    </g>
+    <rect class="cls-1" y="219.49" width="187.79" height="17.1"/>
+    <path class="cls-6" d="M114.72,0l114.71,64.22v117.2c0,31.36-39.56,37.74-41.64,38.07H0V50.02L114.72,0Z"/>
+  </g>
+</svg>

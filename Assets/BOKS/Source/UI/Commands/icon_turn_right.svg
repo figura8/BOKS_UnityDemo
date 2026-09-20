@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_4" data-name="Layer 4" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 256 231.52">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #d8323d;
+      }
+
+      .cls-2 {
+        fill: none;
+      }
+
+      .cls-3 {
+        fill: #801e24;
+      }
+
+      .cls-4 {
+        isolation: isolate;
+      }
+
+      .cls-5 {
+        fill: #761c22;
+      }
+
+      .cls-6 {
+        fill: #892027;
+      }
+
+      .cls-7 {
+        clip-path: url(#clippath);
+      }
+    </style>
+    <clipPath id="clippath">
+      <path class="cls-2" d="M224.52,45.21v17.1c0,35.03-.77,102.75-.82,107.02v-17.1c.05-4.27.82-71.99.82-107.02Z"/>
+    </clipPath>
+  </defs>
+  <g class="cls-4">
+    <g class="cls-4">
+      <g class="cls-7">
+        <g class="cls-4">
+          <path class="cls-6" d="M224.52,45.21v17.1c0,35.03-.77,102.75-.82,107.02v-17.1c.05-4.27.82-71.99.82-107.02"/>
+        </g>
+      </g>
+    </g>
+    <polygon class="cls-3" points="223.7 152.23 223.7 169.33 114.26 230.71 114.26 213.6 223.7 152.23"/>
+    <polygon class="cls-5" points="114.26 213.6 114.26 230.71 .82 164.18 .82 147.08 114.26 213.6"/>
+    <path class="cls-1" d="M192.23,0c20.63,0,31.71,7.83,32.18,28.27.48,20.44-.64,118.78-.7,123.96l-109.44,61.37L.82,147.08V0h191.41Z"/>
+  </g>
+</svg>

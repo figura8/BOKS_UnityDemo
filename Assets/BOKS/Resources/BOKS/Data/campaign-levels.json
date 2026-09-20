@@ -7,18 +7,12 @@
       "number": 1,
       "baseStepIndex": 0,
       "campaignIndex": 0,
-      "name": "Livello 1",
+      "name": "Level 1",
       "icon": "leaf",
       "baseLevel": "level1",
       "characterId": "boks_green",
-      "start": {
-        "x": 2,
-        "y": 3
-      },
-      "goal": {
-        "x": 3,
-        "y": 3
-      },
+      "start": {"x":2,"y":3},
+      "goal": {"x":3,"y":3},
       "startOri": "right",
       "obstacles": [],
       "decorations": [
@@ -114,28 +108,9 @@
           "trunkColor": ""
         }
       ],
-      "mainSlotEnabled": [
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "fnSlotEnabled": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "enabledBlocks": {
-        "forward": true,
-        "left": false,
-        "right": false,
-        "function": false
-      },
+      "mainSlotEnabled": [true,false,false,false,false,false,false,false],
+      "fnSlotEnabled": [false,false,false,false],
+      "enabledBlocks": {"forward":true,"left":false,"right":false,"function":false},
       "themeOverrides": {},
       "levelHints": {
         "availableBlockGlow": true
@@ -146,18 +121,12 @@
       "number": 2,
       "baseStepIndex": 1,
       "campaignIndex": 1,
-      "name": "Livello 2",
+      "name": "Level 2",
       "icon": "leaf",
       "baseLevel": "level1",
       "characterId": "boks_red",
-      "start": {
-        "x": 1,
-        "y": 3
-      },
-      "goal": {
-        "x": 3,
-        "y": 3
-      },
+      "start": {"x":1,"y":3},
+      "goal": {"x":3,"y":3},
       "startOri": "right",
       "obstacles": [],
       "decorations": [
@@ -227,28 +196,9 @@
           "trunkColor": ""
         }
       ],
-      "mainSlotEnabled": [
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "fnSlotEnabled": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "enabledBlocks": {
-        "forward": true,
-        "left": false,
-        "right": false,
-        "function": false
-      },
+      "mainSlotEnabled": [true,true,false,false,false,false,false,false],
+      "fnSlotEnabled": [false,false,false,false],
+      "enabledBlocks": {"forward":true,"left":false,"right":false,"function":false},
       "themeOverrides": {
         "--grid-bg": "#acd784"
       },
@@ -261,7 +211,7 @@
       "number": 3,
       "baseStepIndex": 2,
       "campaignIndex": 2,
-      "name": "Livello 3",
+      "name": "Level 3",
       "icon": "turtle",
       "baseLevel": "level1",
       "characterId": "boks_yellow",
@@ -395,7 +345,7 @@
       "number": 4,
       "baseStepIndex": 3,
       "campaignIndex": 3,
-      "name": "Livello 4",
+      "name": "Level 4",
       "icon": "sun",
       "baseLevel": "level1",
       "characterId": "boks_blu",
@@ -528,7 +478,7 @@
       "number": 5,
       "baseStepIndex": 4,
       "campaignIndex": 4,
-      "name": "Livello 5",
+      "name": "Level 5",
       "icon": "moon",
       "baseLevel": "level1",
       "characterId": "boks_green",
@@ -763,7 +713,7 @@
       "number": 6,
       "baseStepIndex": 5,
       "campaignIndex": 5,
-      "name": "Livello 6",
+      "name": "Level 6",
       "icon": "leaf",
       "baseLevel": "level1",
       "characterId": "boks_red",
@@ -902,7 +852,7 @@
       "number": 7,
       "baseStepIndex": 6,
       "campaignIndex": 6,
-      "name": "Livello 7",
+      "name": "Level 7",
       "icon": "leaf",
       "baseLevel": "level1",
       "characterId": "boks_yellow",
@@ -1020,7 +970,7 @@
       "number": 8,
       "baseStepIndex": 7,
       "campaignIndex": 7,
-      "name": "Livello 8",
+      "name": "Level 8",
       "icon": "star",
       "baseLevel": "level1",
       "characterId": "boks_blu",
@@ -1177,7 +1127,7 @@
       "number": 9,
       "baseStepIndex": 8,
       "campaignIndex": 8,
-      "name": "Livello 9",
+      "name": "Level 9",
       "icon": "turtle",
       "baseLevel": "level1",
       "characterId": "boks_green",
@@ -1233,7 +1183,7 @@
       "number": 10,
       "baseStepIndex": 9,
       "campaignIndex": 9,
-      "name": "Livello 10",
+      "name": "Level 10",
       "icon": "sun",
       "baseLevel": "level1",
       "characterId": "boks_red",
@@ -1283,227 +1233,5 @@
       "levelHints": {
         "availableBlockGlow": false
       }
-    },
-    {
-      "id": "level1-step-11",
-      "number": 11,
-      "baseStepIndex": 10,
-      "campaignIndex": 10,
-      "name": "Livello 11",
-      "icon": "moon",
-      "baseLevel": "level1",
-      "characterId": "boks_yellow",
-      "start": {
-        "x": 4,
-        "y": 4
-      },
-      "goal": {
-        "x": 1,
-        "y": 1
-      },
-      "startOri": "up",
-      "obstacles": [
-        {
-          "x": 4,
-          "y": 3
-        },
-        {
-          "x": 3,
-          "y": 2
-        }
-      ],
-      "decorations": [],
-      "mainSlotEnabled": [
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false
-      ],
-      "fnSlotEnabled": [
-        true,
-        true,
-        true,
-        false
-      ],
-      "enabledBlocks": {
-        "forward": true,
-        "left": true,
-        "right": true,
-        "function": true
-      },
-      "themeOverrides": {},
-      "levelHints": {
-        "availableBlockGlow": false
-      }
-    },
-    {
-      "id": "level1-step-12",
-      "number": 12,
-      "baseStepIndex": 11,
-      "campaignIndex": 11,
-      "name": "Livello 12",
-      "icon": "flower",
-      "baseLevel": "level1",
-      "characterId": "boks_blu",
-      "start": {
-        "x": 4,
-        "y": 4
-      },
-      "goal": {
-        "x": 0,
-        "y": 2
-      },
-      "startOri": "up",
-      "obstacles": [
-        {
-          "x": 3,
-          "y": 4
-        },
-        {
-          "x": 2,
-          "y": 3
-        }
-      ],
-      "decorations": [],
-      "mainSlotEnabled": [
-        true,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "fnSlotEnabled": [
-        true,
-        true,
-        true,
-        true
-      ],
-      "enabledBlocks": {
-        "forward": true,
-        "left": true,
-        "right": true,
-        "function": true
-      },
-      "themeOverrides": {},
-      "levelHints": {
-        "availableBlockGlow": false
-      }
-    },
-    {
-      "id": "level1-step-13",
-      "number": 13,
-      "baseStepIndex": 12,
-      "campaignIndex": 12,
-      "name": "Livello 13",
-      "icon": "leaf",
-      "baseLevel": "level1",
-      "characterId": "boks_green",
-      "start": {
-        "x": 1,
-        "y": 4
-      },
-      "goal": {
-        "x": 4,
-        "y": 0
-      },
-      "startOri": "up",
-      "obstacles": [
-        {
-          "x": 4,
-          "y": 4
-        },
-        {
-          "x": 3,
-          "y": 2
-        },
-        {
-          "x": 3,
-          "y": 0
-        }
-      ],
-      "decorations": [],
-      "mainSlotEnabled": [
-        true,
-        true,
-        true,
-        true,
-        false,
-        false,
-        false,
-        false
-      ],
-      "fnSlotEnabled": [
-        true,
-        true,
-        true,
-        true
-      ],
-      "enabledBlocks": {
-        "forward": true,
-        "left": true,
-        "right": true,
-        "function": true
-      },
-      "themeOverrides": {
-        "--panel-bg": "#dff0cb",
-        "--cell-hi-bg": "#072116",
-        "--cell-hi-edge": "#89e1b8",
-        "--obstacle-bg-bottom": "#da9234"
-      },
-      "levelHints": {
-        "availableBlockGlow": false
-      }
-    },
-    {
-      "id": "custom-1776873283645",
-      "number": 14,
-      "baseStepIndex": null,
-      "campaignIndex": null,
-      "name": "Livello 14",
-      "icon": "leaf",
-      "baseLevel": "level1",
-      "characterId": "boks_green",
-      "start": {
-        "x": 4,
-        "y": 3
-      },
-      "goal": null,
-      "startOri": "right",
-      "obstacles": [],
-      "decorations": [],
-      "mainSlotEnabled": [
-        true,
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "fnSlotEnabled": [
-        false,
-        false,
-        false,
-        false
-      ],
-      "enabledBlocks": {
-        "forward": true,
-        "left": false,
-        "right": false,
-        "function": false
-      },
-      "themeOverrides": {},
-      "levelHints": {
-        "availableBlockGlow": false
-      }
-    }
-  ]
+    }]
 }

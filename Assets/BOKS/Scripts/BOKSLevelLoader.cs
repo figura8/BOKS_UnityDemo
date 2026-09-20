@@ -15,6 +15,12 @@ namespace BOKS.Demo
         static BOKSLevelDefinition[] campaign;
         public static string LevelJsonPath(int levelNumber) => $"Assets/BOKS/Source/Data/level-{levelNumber:D2}.json";
 
+        /// <summary>For authoring tools: forget cached campaign JSON after the asset has changed.</summary>
+        public static void ClearCampaignCache()
+        {
+            campaign = null;
+        }
+
         public static BOKSLevelDefinition FromJson(string json)
         {
             if (string.IsNullOrWhiteSpace(json)) return null;

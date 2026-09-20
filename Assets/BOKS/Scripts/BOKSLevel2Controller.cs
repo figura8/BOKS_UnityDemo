@@ -54,6 +54,8 @@ namespace BOKS.Demo
         int startRow = 3;
         int goalColumn = 3;
         int goalRow = 3;
+        bool hasGoal;
+        bool hasStart;
         int gridColumns = 6;
         int gridRows = 6;
         BOKSDirection facing = BOKSDirection.Right;
@@ -196,6 +198,9 @@ namespace BOKS.Demo
             startRow = levelDefinition.StartRow;
             goalColumn = levelDefinition.GoalColumn;
             goalRow = levelDefinition.GoalRow;
+            hasGoal = levelDefinition.goal != null;
+            hasStart = levelDefinition.start != null;
+            if (hero != null) hero.gameObject.SetActive(hasStart);
             gridColumns = levelDefinition.GridColumns;
             gridRows = levelDefinition.GridRows;
             facing = levelDefinition.Direction;
@@ -238,8 +243,19 @@ namespace BOKS.Demo
             EnsureMicroAnimations();
             InitializeFromDefinition();
             CacheInitialState();
-            playButton.onClick.AddListener(Play);
+            BindPlayButton();
             RestartLevel2();
+        }
+
+        void BindPlayButton()
+        {
+            if (playButton == null)
+            {
+                Debug.LogError("[BOKS TEST] Run rejected: visible Play button reference is missing");
+                return;
+            }
+            playButton.onClick.RemoveListener(Play);
+            playButton.onClick.AddListener(Play);
         }
 
         void OnDestroy()
@@ -262,11 +278,32 @@ namespace BOKS.Demo
             return false;
         }
 
-        public void Play() => TryPlay();
+        public void Play()
+        {
+            Debug.Log("[BOKS TEST] Play button pressed");
+            TryPlay();
+        }
 
         public bool TryPlay()
         {
-            if (inputLocked || CountLogicalCommands() == 0) return false;
+            Debug.Log("[BOKS TEST] Run requested");
+            Debug.Log("[BOKS TEST] Main program: " + ProgramText(0, 8));
+            Debug.Log("[BOKS TEST] Function program: " + ProgramText(8, 4));
+            if (running)
+            {
+                Debug.Log("[BOKS TEST] Run rejected: a run is already active");
+                return false;
+            }
+            if (inputLocked)
+            {
+                Debug.Log("[BOKS TEST] Run rejected: gameplay input is locked");
+                return false;
+            }
+            if (CountLogicalCommands() == 0)
+            {
+                Debug.Log("[BOKS TEST] Run rejected: Main/Function program is empty");
+                return false;
+            }
             inputLocked = true;
             running = true;
             succeeded = false;
@@ -277,7 +314,17 @@ namespace BOKS.Demo
             BOKSAudioManager.Play(BOKSAudioCue.PlayPressed);
             PlayPressed?.Invoke();
             StartCoroutine(ExecuteProgram());
+            Debug.Log("[BOKS TEST] Run started");
             return true;
+        }
+
+        string ProgramText(int start, int count)
+        {
+            if (logicalProgram == null) return "<not initialized>";
+            var values = new List<string>();
+            int end = Mathf.Min(logicalProgram.Length, start + count);
+            for (int i = start; i < end; i++) values.Add((i + 1) + ":" + logicalProgram[i]);
+            return values.Count == 0 ? "<no slots>" : string.Join(", ", values);
         }
 
         IEnumerator ExecuteProgram()
@@ -366,7 +413,7 @@ namespace BOKS.Demo
                 if (blockedCells.Contains(destination)) yield return MoveBlocked();
                 else
                 {
-                    bool enteringGoal = destination.x == goalColumn && destination.y == goalRow;
+                    bool enteringGoal = hasGoal && destination.x == goalColumn && destination.y == goalRow;
                     yield return MoveForward(destination, enteringGoal);
                     won = enteringGoal;
                     if (!enteringGoal) yield return Wait(NonGoalSettleSeconds);
@@ -754,6 +801,51 @@ namespace BOKS.Demo
             logicalProgram[sourceSlot] = BOKSCommandType.None;
             RefreshCommandVisuals();
             return true;
+        }
+
+        /// <summary>Editor authoring hook: update one command type without rebuilding the level.</summary>
+        public void SetEditorCommandEnabled(BOKSCommandType command, bool enabled)
+        {
+            if (!enabled)
+                for (int i = 0; i < logicalProgram.Length; i++)
+                    if (logicalProgram[i] == command) logicalProgram[i] = BOKSCommandType.None;
+            RefreshCommandVisuals();
+        }
+
+        /// <summary>Editor authoring hook: update one slot and clear only that slot when disabled.</summary>
+        public void SetEditorSlotEnabled(int slotIndex, bool enabled)
+        {
+            if (slotIndex < 0 || enabledSlots == null || slotIndex >= enabledSlots.Length) return;
+            enabledSlots[slotIndex] = enabled;
+            if (!enabled && logicalProgram[slotIndex] != BOKSCommandType.None)
+                logicalProgram[slotIndex] = BOKSCommandType.None;
+            RefreshCommandVisuals();
+        }
+
+        /// <summary>Restore only transient runner state after an editor test; level geometry is untouched.</summary>
+        public void RestoreEditorTestState(int column, int row, BOKSDirection direction, BOKSCommandType[] program)
+        {
+            StopAllCoroutines();
+            GoalPopVfx?.Reset();
+            heroRebuke?.Cancel();
+            heroBlink?.ClearSquint();
+            heroColumn = column;
+            heroRow = row;
+            hero.anchoredPosition = new Vector2(7 + column * CellStride + 34.5f, -(7 + row * CellStride + 34.5f));
+            SetFacing(direction);
+            ClearLogicalProgramOnly();
+            if (program != null)
+                for (int i = 0; i < logicalProgram.Length && i < program.Length; i++)
+                    logicalProgram[i] = program[i];
+            RefreshCommandVisuals();
+            inputLocked = false;
+            running = false;
+            succeeded = false;
+            runResolved = true;
+            SetPaletteInteractable(true);
+            playButton.interactable = true;
+            SetRunPressed(false);
+            ClearExecutionHighlights();
         }
 
         public bool BeginCommandDrag(BOKSCommandDragSource source)

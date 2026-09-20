@@ -1,0 +1,20 @@
+{
+  "id": "custom-1789569457762",
+  "number": 11,
+  "baseStepIndex": null,
+  "campaignIndex": null,
+  "name": "Level 11",
+  "icon": "leaf",
+  "baseLevel": "level1",
+  "characterId": "boks_green",
+  "start": { "x": 2, "y": 3 },
+  "goal": { "x": 4, "y": 2 },
+  "startOri": "right",
+  "obstacles": [],
+  "decorations": [],
+  "mainSlotEnabled": [true, true, true, false, false, false, false, false],
+  "fnSlotEnabled": [false, false, false, false],
+  "enabledBlocks": { "forward": true, "left": false, "right": false, "function": false },
+  "themeOverrides": {},
+  "levelHints": { "availableBlockGlow": false }
+}

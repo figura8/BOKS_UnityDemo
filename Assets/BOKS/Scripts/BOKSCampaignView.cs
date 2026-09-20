@@ -73,9 +73,13 @@ namespace BOKS.Demo
             decorationReactions.Clear();
             ClearOldObstacles();
 
-            goal.anchoredPosition = new Vector2(6 + level.GoalColumn * 75f + 35.5f - 54f,
-                -(6 + level.GoalRow * 75f + 35.5f - 54f));
-            ApplyGoalIdle();
+            goal.gameObject.SetActive(level.goal != null);
+            if (level.goal != null)
+            {
+                goal.anchoredPosition = new Vector2(6 + level.GoalColumn * 75f + 35.5f - 54f,
+                    -(6 + level.GoalRow * 75f + 35.5f - 54f));
+                ApplyGoalIdle();
+            }
 
             for (int i = 0; i < slotRoots.Length; i++)
             {
@@ -118,6 +122,35 @@ namespace BOKS.Demo
             onboarding?.Begin(level.levelNumber == 1);
         }
 
+        public void SetEditorCommandEnabled(BOKSCommandType command, bool enabled)
+        {
+            int index = System.Array.IndexOf(paletteOrder, command);
+            if (index >= 0 && index < paletteButtons.Length)
+                paletteButtons[index].gameObject.SetActive(enabled);
+            gameplay.SetEditorCommandEnabled(command, enabled);
+            for (int i = 0; i < paletteGlowLayers.Length; i++)
+            {
+                int paletteIndex = i / 3;
+                if (paletteIndex == index && paletteGlowLayers[i] != null)
+                    paletteGlowLayers[i].SetActive(enabled && gameplay.LogicalProgramCount == 0);
+            }
+        }
+
+        public void SetEditorSlotEnabled(int slotIndex, bool enabled)
+        {
+            if (slotIndex < 0 || slotIndex >= slotRoots.Length) return;
+            Transform visuals = slotRoots[slotIndex].Find("Slot Card Visuals");
+            if (visuals != null)
+            {
+                CanvasGroup group = visuals.GetComponent<CanvasGroup>();
+                if (group == null) group = visuals.gameObject.AddComponent<CanvasGroup>();
+                group.alpha = enabled ? 1f : .34f;
+            }
+            BOKSProgramDropSlot drop = slotRoots[slotIndex].GetComponent<BOKSProgramDropSlot>();
+            if (drop != null) drop.SetEnabled(enabled);
+            gameplay.SetEditorSlotEnabled(slotIndex, enabled);
+        }
+
         /// <summary>
         /// Installs/refreshes the source goal-bubble idle (drift, pulse, wobble, glow) on the goal
         /// root. The rest pose must be re-cached after the per-level reposition.
@@ -141,13 +174,25 @@ namespace BOKS.Demo
         void ClearDynamicLayer(RectTransform layer)
         {
             if (layer == null) return;
-            for (int i = layer.childCount - 1; i >= 0; i--) Destroy(layer.GetChild(i).gameObject);
+            for (int i = layer.childCount - 1; i >= 0; i--) RemoveLevelObject(layer.GetChild(i).gameObject);
         }
 
         void ClearOldObstacles()
         {
             for (int i = grid.childCount - 1; i >= 0; i--)
-                if (grid.GetChild(i).name.StartsWith("Obstacle (")) Destroy(grid.GetChild(i).gameObject);
+                if (grid.GetChild(i).name.StartsWith("Obstacle (")) RemoveLevelObject(grid.GetChild(i).gameObject);
+        }
+
+        static void RemoveLevelObject(GameObject target)
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                DestroyImmediate(target);
+                return;
+            }
+#endif
+            Destroy(target);
         }
 
         void AddObstacle(int x, int y)

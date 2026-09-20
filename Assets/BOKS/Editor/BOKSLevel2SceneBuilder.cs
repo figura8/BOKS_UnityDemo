@@ -17,8 +17,10 @@ namespace BOKS.Editor
         static readonly Color Cell = C("#cfeaa5");
         static readonly Color CellEdge = new Color(114f / 255f, 164f / 255f, 72f / 255f, .5f);
 
-        static string ScenePathFor(int levelNumber) => $"Assets/Scenes/BOKS_Level{levelNumber:D2}.unity";
+        static string ScenePathFor(int levelNumber) => $"Assets/Scenes/Archive/BOKS_Level{levelNumber:D2}.unity";
+        const string MainMenuScenePath = "Assets/Scenes/BOKS_MainMenu.unity";
         const string CampaignScenePath = "Assets/Scenes/BOKS_Campaign.unity";
+        const string LevelEditorScenePath = "Assets/Scenes/BOKS_LevelEditor.unity";
 
         [MenuItem("BOKS/Build Campaign 1-10")]
         public static void BuildCampaign() => Build(1, true);
@@ -59,7 +61,8 @@ namespace BOKS.Editor
             cam.orthographic = true;
             cameraGo.transform.position = new Vector3(0, 0, -10);
 
-            GameObject canvasGo = new GameObject("BOKS Level 2", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(CanvasRenderer), typeof(GraphicRaycaster));
+            string canvasName = campaign ? "BOKS Campaign UI" : $"BOKS Legacy Level {levelNumber:D2} UI";
+            GameObject canvasGo = new GameObject(canvasName, typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(CanvasRenderer), typeof(GraphicRaycaster));
             Canvas canvas = canvasGo.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceCamera;
             canvas.worldCamera = cam;
@@ -75,7 +78,7 @@ namespace BOKS.Editor
             BOKSNotebookGraphic paper = canvasGo.AddComponent<BOKSNotebookGraphic>();
             paper.raycastTarget = false;
 
-            RectTransform portrait = Rect("Portrait Layout (520 x 1000)", canvasRect, 0, 0, 520, 1000);
+            RectTransform portrait = Rect("BOKS Gameplay Board", canvasRect, 0, 0, 520, 1000);
             portrait.anchorMin = portrait.anchorMax = portrait.pivot = new Vector2(.5f, .5f);
             portrait.anchoredPosition = Vector2.zero;
 
@@ -128,9 +131,9 @@ namespace BOKS.Editor
                 BOKSCampaignView view = portrait.gameObject.AddComponent<BOKSCampaignView>();
                 view.Configure(controller, grid, goal, objectLayer, beeLayer, dropSlots, paletteButtons, paletteGlows,
                     LoadAllCharacterSprites(),
-                    AssetDatabase.LoadAssetAtPath<Sprite>("Assets/BOKS/Generated/tree.png"),
-                    AssetDatabase.LoadAssetAtPath<Sprite>("Assets/BOKS/Generated/daisy.png"),
-                    AssetDatabase.LoadAssetAtPath<Sprite>("Assets/BOKS/Generated/bee.png"));
+                    AssetDatabase.LoadAssetAtPath<Sprite>("Assets/BOKS/RuntimeAssets/tree.png"),
+                    AssetDatabase.LoadAssetAtPath<Sprite>("Assets/BOKS/RuntimeAssets/daisy.png"),
+                    AssetDatabase.LoadAssetAtPath<Sprite>("Assets/BOKS/RuntimeAssets/bee.png"));
                 BOKSCampaignController campaignController = portrait.gameObject.AddComponent<BOKSCampaignController>();
                 campaignController.Configure(view);
             }
@@ -147,11 +150,9 @@ namespace BOKS.Editor
             if (campaign)
                 EditorBuildSettings.scenes = new[]
                 {
+                    new EditorBuildSettingsScene(MainMenuScenePath, true),
                     new EditorBuildSettingsScene(CampaignScenePath, true),
-                    new EditorBuildSettingsScene(ScenePathFor(2), true),
-                    new EditorBuildSettingsScene(ScenePathFor(3), true),
-                    new EditorBuildSettingsScene(ScenePathFor(4), true),
-                    new EditorBuildSettingsScene(ScenePathFor(5), true)
+                    new EditorBuildSettingsScene(LevelEditorScenePath, true)
                 };
             Selection.activeGameObject = canvasGo;
             Debug.Log((campaign ? "BOKS campaign" : $"BOKS Level {levelNumber}") + " static scene built at " + scenePath);
@@ -176,13 +177,13 @@ namespace BOKS.Editor
             foreach (string color in new[] { "red", "yellow", "blu", "green" })
             foreach (string dir in new[] { "up", "right", "down", "left" })
             {
-                string path = $"Assets/BOKS/Generated/character-{color}-{dir}.png";
+                string path = $"Assets/BOKS/RuntimeAssets/character-{color}-{dir}.png";
                 if (System.IO.File.Exists(path)) ConfigureTexture(path);
             }
 
             foreach (string name in new[] { "turn-left", "turn-right", "forward", "tree", "daisy", "bee", "boks-logo" })
             {
-                string path = $"Assets/BOKS/Generated/{name}.png";
+                string path = $"Assets/BOKS/RuntimeAssets/{name}.png";
                 if (System.IO.File.Exists(path)) ConfigureTexture(path);
             }
         }
@@ -198,17 +199,17 @@ namespace BOKS.Editor
 
         static void BuildHeader(RectTransform root)
         {
-            RectTransform group = Rect("Header - Original BOKS Logo", root, 207, 5, 106, 47.21875f);
+            RectTransform group = Rect("BOKS Gameplay Header", root, 207, 5, 106, 47.21875f);
             Shape("Shadow", group, 0, 2, 106, 47.21875f, C("#cdc2ab", .82f), 10);
             Shape("Logo Backing", group, 0, 0, 106, 47.21875f, C("#fff9ea", .58f), 10);
-            SpriteImage("BOKS Logo (original)", group, 10, 4, 86, 39.21875f, "Assets/BOKS/Generated/boks-logo.png", false);
+            SpriteImage("BOKS Logo (original)", group, 10, 4, 86, 39.21875f, "Assets/BOKS/RuntimeAssets/boks-logo.png", false);
         }
 
         static void BuildBoard(RectTransform root, BOKSLevelDefinition level, out RectTransform grid, out RectTransform goal,
             out RectTransform objectLayer, out RectTransform beeLayer, out RectTransform hero, out Image heroArt,
             out RectTransform heroVisual, out Sprite[] facingSprites)
         {
-            RectTransform wrapper = Rect("Level 2 Board - 6 x 6", root, 30, 61.21875f, 460, 460);
+            RectTransform wrapper = Rect("BOKS Board - 6 x 6", root, 30, 61.21875f, 460, 460);
             Shape("Board Soft Shadow", wrapper, 0, 8, 460, 460, C("#5f4e34", .14f), 16);
             Shape("Board Lower Edge", wrapper, 0, 2, 460, 460, C("#cdc2ab"), 16);
             Shape("Board Wrapper", wrapper, 0, 0, 460, 460, Panel, 16, 2, PanelEdge);
@@ -232,10 +233,10 @@ namespace BOKS.Editor
                 if (obstacle != null) BuildObstacle(grid, obstacle.x, obstacle.y);
 
             objectLayer = Rect("Decorations - Object Layer (z8)", grid, 0, 0, 460, 460);
-            SpriteImage("Tree small - anchor .745,.893 scale 1", objectLayer, 307.2f, 348.3f, 71, 71, "Assets/BOKS/Generated/tree.png", false);
-            SpriteImage("Tree large - anchor .257,.263 scale 1.6", objectLayer, 61.42f, 21.012f, 113.6f, 113.6f, "Assets/BOKS/Generated/tree.png", false);
-            SpriteImage("Daisy - anchor .198,.880 scale .9", objectLayer, 59.13f, 348.568f, 63.9f, 63.9f, "Assets/BOKS/Generated/daisy.png", false);
-            SpriteImage("Daisy - anchor .710,.357 scale .9", objectLayer, 294.65f, 107.988f, 63.9f, 63.9f, "Assets/BOKS/Generated/daisy.png", false);
+            SpriteImage("Tree small - anchor .745,.893 scale 1", objectLayer, 307.2f, 348.3f, 71, 71, "Assets/BOKS/RuntimeAssets/tree.png", false);
+            SpriteImage("Tree large - anchor .257,.263 scale 1.6", objectLayer, 61.42f, 21.012f, 113.6f, 113.6f, "Assets/BOKS/RuntimeAssets/tree.png", false);
+            SpriteImage("Daisy - anchor .198,.880 scale .9", objectLayer, 59.13f, 348.568f, 63.9f, 63.9f, "Assets/BOKS/RuntimeAssets/daisy.png", false);
+            SpriteImage("Daisy - anchor .710,.357 scale .9", objectLayer, 294.65f, 107.988f, 63.9f, 63.9f, "Assets/BOKS/RuntimeAssets/daisy.png", false);
 
             goal = BuildGoal(grid, level);
             hero = BuildCharacter(grid, level, out heroArt, out heroVisual, out facingSprites);
@@ -353,7 +354,7 @@ namespace BOKS.Editor
                 BOKSDirection.Down => "down",
                 _ => "right"
             };
-            return $"Assets/BOKS/Generated/character-{CharacterColor(characterId)}-{dir}.png";
+            return $"Assets/BOKS/RuntimeAssets/character-{CharacterColor(characterId)}-{dir}.png";
         }
 
         static void BuildObstacle(RectTransform grid, int x, int y)
@@ -366,7 +367,7 @@ namespace BOKS.Editor
 
         static void BuildPalette(RectTransform root, List<BOKSCommandType> commands, out Button[] paletteButtons, out GameObject[] paletteGlows)
         {
-            RectTransform panel = Rect("Command Area", root, 30, 529.21875f, 460, 72);
+            RectTransform panel = Rect("BOKS Command Palette", root, 30, 529.21875f, 460, 72);
             AddPanelChrome(panel, 460, 72, 7);
 
             const float stride = 105.75f;
@@ -407,10 +408,10 @@ namespace BOKS.Editor
         {
             switch (command)
             {
-                case BOKSCommandType.Left: return "Assets/BOKS/Generated/turn-left.png";
-                case BOKSCommandType.Right: return "Assets/BOKS/Generated/turn-right.png";
-                case BOKSCommandType.Function: return "Assets/BOKS/Generated/function.png";
-                default: return "Assets/BOKS/Generated/forward.png";
+                case BOKSCommandType.Left: return "Assets/BOKS/RuntimeAssets/turn-left.png";
+                case BOKSCommandType.Right: return "Assets/BOKS/RuntimeAssets/turn-right.png";
+                case BOKSCommandType.Function: return "Assets/BOKS/RuntimeAssets/function.png";
+                default: return "Assets/BOKS/RuntimeAssets/forward.png";
             }
         }
 
@@ -434,7 +435,7 @@ namespace BOKS.Editor
             commandVisuals = new GameObject[fullLayout ? 12 : enabledTotalCount];
             enabledWells = new BOKSShapeGraphic[fullLayout ? 12 : enabledTotalCount];
             dropSlots = new RectTransform[12];
-            RectTransform board = Rect("Program Slots - Static", root, 30, 607.21875f, 460, 218);
+            RectTransform board = Rect("BOKS Program Area", root, 30, 607.21875f, 460, 218);
             AddPanelChrome(board, 460, 218, 8);
             RectTransform content = Rect("Tracks and Slots", board, 2, 2, 456, 214);
 
@@ -475,7 +476,7 @@ namespace BOKS.Editor
                     int storageIndex = fullLayout ? row * 4 + col : enabledIndex;
                     enabledWells[storageIndex] = well.GetComponent<BOKSShapeGraphic>();
                     string placedName = fullLayout ? "Placed Command " : "Placed Forward Command ";
-                    RectTransform placed = SpriteImage(placedName + (storageIndex + 1), visuals, 23.875f, 2.5f, 45, 45, "Assets/BOKS/Generated/forward.png", true);
+                    RectTransform placed = SpriteImage(placedName + (storageIndex + 1), visuals, 23.875f, 2.5f, 45, 45, "Assets/BOKS/RuntimeAssets/forward.png", true);
                     placed.gameObject.SetActive(false);
                     commandVisuals[storageIndex] = placed.gameObject;
                     enabledIndex++;
@@ -486,7 +487,7 @@ namespace BOKS.Editor
         static void BuildRunButton(RectTransform root, out Button playButton, out RectTransform runRoot,
             out RectTransform runShell, out BOKSShapeGraphic[] runDots)
         {
-            RectTransform run = Rect("Play Button - Eight Dot HUD", root, 178, 831.21875f, 164, 56);
+            RectTransform run = Rect("BOKS Run Button", root, 178, 831.21875f, 164, 56);
             Shape("Run Shadow", run, 0, 10, 164, 56, C("#5f4e34", .18f), 14);
             Shape("Run Lower Edge", run, 0, 4, 164, 56, C("#7aa05b", .72f), 14);
             Shape("Run Outer", run, 0, 0, 164, 56, Panel, 14, 7, PanelEdge);
@@ -509,7 +510,7 @@ namespace BOKS.Editor
         {
             Shape("Soft Shadow", panel, 0, shadowY, w, h, C("#5f4e34", .12f), 16);
             Shape("Lower Edge", panel, 0, 2, w, h, C("#cdc2ab"), 16);
-            Shape("Panel", panel, 0, 0, w, h, Panel, 16, 2, PanelEdge);
+            Shape(panel.name + " Surface", panel, 0, 0, w, h, Panel, 16, 2, PanelEdge);
         }
 
         static void AddGrass(RectTransform cell)
@@ -539,7 +540,7 @@ namespace BOKS.Editor
 
         static void AddBee(RectTransform parent, string name, float nx, float ny, float size, float rotation)
         {
-            RectTransform bee = SpriteImage(name, parent, nx * 460 - size * .5f, ny * 460 - size * .5f, size, size, "Assets/BOKS/Generated/bee.png", false);
+            RectTransform bee = SpriteImage(name, parent, nx * 460 - size * .5f, ny * 460 - size * .5f, size, size, "Assets/BOKS/RuntimeAssets/bee.png", false);
             bee.localEulerAngles = new Vector3(0, 0, rotation);
         }
 

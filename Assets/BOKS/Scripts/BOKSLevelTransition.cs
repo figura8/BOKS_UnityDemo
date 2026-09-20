@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
 
 namespace BOKS.Demo
@@ -71,6 +72,8 @@ namespace BOKS.Demo
                 fill.material = fillMaterial;
             }
 
+            TransitionLog($"shader = {(shader != null ? shader.name : "<missing>")}, supported = {(shader != null && shader.isSupported)}, graphics API = {SystemInfo.graphicsDeviceType}");
+
             fillGo.SetActive(false);
             RefreshScreenMetrics();
         }
@@ -105,6 +108,7 @@ namespace BOKS.Demo
         {
             IsRunning = true;
             RefreshScreenMetrics();
+            TransitionLog("close start");
 
             // The first alpha-faded frame must already contain the full-screen hole. Previously
             // this state was assigned only after the fade, exposing the solid fill on first use.
@@ -126,6 +130,7 @@ namespace BOKS.Demo
 
             // Fully covered: disable the hole so the solid fill covers 100% of the screen.
             SetHoleEnabled(false);
+            TransitionLog("closed");
 
             // Swap/initialise the next level while the screen is fully covered.
             covered?.Invoke();
@@ -135,6 +140,7 @@ namespace BOKS.Demo
 
             SetHoleEnabled(true);
             SetHole(MinScale, 0f);
+            TransitionLog("open start");
             yield return Animate(OpenSeconds, p =>
             {
                 float t = Ease(p);
@@ -149,6 +155,7 @@ namespace BOKS.Demo
             blocker.blocksRaycasts = false;
             fill.gameObject.SetActive(false);
             IsRunning = false;
+            TransitionLog("complete");
             finished?.Invoke();
         }
         void SetHole(float scale, float rotationDegrees)
@@ -158,6 +165,8 @@ namespace BOKS.Demo
                 fillMaterial.SetFloat("_HoleHalf", CloudBase * 0.5f * scale);
                 fillMaterial.SetFloat("_Rotation", rotationDegrees);
                 fillMaterial.SetFloat("_Feather", FeatherPx);
+                if (scale <= MinScale || scale >= fullScale)
+                    TransitionLog($"radius = {CloudBase * 0.5f * scale:F2}");
             }
             else
             {
@@ -251,6 +260,11 @@ namespace BOKS.Demo
         {
             float duration = seconds * Mathf.Max(0f, TimingScale);
             for (float elapsed = 0; elapsed < duration; elapsed += Time.unscaledDeltaTime) yield return null;
+        }
+
+        void TransitionLog(string message)
+        {
+            if (Debug.isDebugBuild) Debug.Log($"[BOKS TRANSITION] {message}");
         }
     }
 }

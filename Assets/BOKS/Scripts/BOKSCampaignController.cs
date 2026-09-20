@@ -15,6 +15,7 @@ namespace BOKS.Demo
 
         public int CurrentLevel { get; private set; }
         public bool CampaignComplete { get; private set; }
+        public bool AuthoringMode { get; set; }
         public BOKSLevel2Controller Gameplay => view != null ? view.Gameplay : null;
 
         public void Configure(BOKSCampaignView campaignView) => view = campaignView;
@@ -33,6 +34,7 @@ namespace BOKS.Demo
 
         void OnLevelCompleted(BOKSLevel2Controller controller)
         {
+            if (AuthoringMode) return;
             if (CurrentLevel >= FinalLevel)
             {
                 CampaignComplete = true;

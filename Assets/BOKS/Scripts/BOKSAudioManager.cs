@@ -91,7 +91,9 @@ namespace BOKS.Demo
         readonly Dictionary<BOKSAudioCue, AudioSource> restartSources = new Dictionary<BOKSAudioCue, AudioSource>();
         readonly Dictionary<BOKSAudioCue, AudioClip> clips = new Dictionary<BOKSAudioCue, AudioClip>();
         Coroutine introTransition;
+        Coroutine menuMusicTransition;
         bool musicSequenceStarted;
+        bool menuIntroActive;
         float musicVolume = 1f;
         float sfxVolume = 1f;
 
@@ -164,7 +166,6 @@ namespace BOKS.Demo
             oneShotSource = CreateSource("SFX One Shots", false);
             ApplyMusicVolumes();
             SceneManager.sceneLoaded += OnSceneLoaded;
-            StartGameplayMusic();
         }
 
         void OnDestroy()
@@ -261,6 +262,10 @@ namespace BOKS.Demo
             {
                 StartLoopIfNeeded();
             }
+            else if (menuIntroActive)
+            {
+                StartMenuMusic();
+            }
             else
             {
                 StartGameplayMusic();
@@ -280,6 +285,7 @@ namespace BOKS.Demo
         {
             if (musicSequenceStarted || !MusicEnabled) return;
             musicSequenceStarted = true;
+            menuIntroActive = false;
             AudioClip intro = Resources.Load<AudioClip>(ResourceRoot + "music/level_01_intro_main");
             if (intro == null)
             {
@@ -288,9 +294,63 @@ namespace BOKS.Demo
             }
 
             musicIntroSource.clip = intro;
+            musicIntroSource.loop = false;
             musicIntroSource.time = 0f;
             musicIntroSource.Play();
             introTransition = StartCoroutine(QueueLoopAfterIntro());
+        }
+
+        /// <summary>Uses the existing Level 1 intro track as the menu bed until Campaign opens.</summary>
+        public void StartMenuMusic()
+        {
+            if (!MusicEnabled) return;
+            if (introTransition != null) StopCoroutine(introTransition);
+            if (menuMusicTransition != null) StopCoroutine(menuMusicTransition);
+            introTransition = null;
+            menuMusicTransition = null;
+            musicLoopSource.Stop();
+            musicSequenceStarted = false;
+            menuIntroActive = true;
+
+            AudioClip intro = Resources.Load<AudioClip>(ResourceRoot + "music/level_01_intro_main");
+            if (intro == null)
+            {
+                Debug.LogWarning("BOKS menu music is missing: level_01_intro_main.ogg", this);
+                return;
+            }
+
+            musicIntroSource.clip = intro;
+            musicIntroSource.loop = true;
+            musicIntroSource.time = 0f;
+            musicIntroSource.volume = IntroGain * musicVolume;
+            musicIntroSource.Play();
+        }
+
+        void StartGameplayMusicFromMenu()
+        {
+            if (!MusicEnabled) return;
+            if (menuMusicTransition != null) StopCoroutine(menuMusicTransition);
+            if (introTransition != null) StopCoroutine(introTransition);
+            introTransition = null;
+            musicSequenceStarted = true;
+            menuIntroActive = false;
+            menuMusicTransition = StartCoroutine(FadeMenuIntroToLoop());
+        }
+
+        IEnumerator FadeMenuIntroToLoop()
+        {
+            const float fadeSeconds = .25f;
+            float startVolume = musicIntroSource.volume;
+            for (float elapsed = 0f; elapsed < fadeSeconds; elapsed += Time.unscaledDeltaTime)
+            {
+                musicIntroSource.volume = Mathf.Lerp(startVolume, 0f, elapsed / fadeSeconds);
+                yield return null;
+            }
+
+            musicIntroSource.Stop();
+            ApplyMusicVolumes();
+            menuMusicTransition = null;
+            StartLoopIfNeeded();
         }
 
         IEnumerator QueueLoopAfterIntro()
@@ -327,7 +387,11 @@ namespace BOKS.Demo
         void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             KeepExactlyOneActiveListener();
-            StartGameplayMusic();
+            if (scene.name == "BOKS_Campaign")
+            {
+                if (menuIntroActive) StartGameplayMusicFromMenu();
+                else StartGameplayMusic();
+            }
             StartCoroutine(InstallIdleCueTargetsNextFrame());
         }
 

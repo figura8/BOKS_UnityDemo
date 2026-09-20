@@ -85,7 +85,11 @@ namespace BOKS.Demo
     [Serializable]
     public sealed class BOKSLevelDefinition
     {
+        public string id;
         public int levelNumber;
+        public string name;
+        public string icon;
+        public string baseLevel;
         public string characterId = "boks_red";
         public string startDirection = "right";
         public BOKSGrid grid = new BOKSGrid();
@@ -104,10 +108,10 @@ namespace BOKS.Demo
         public BOKSEnabledBlocks enabledBlocks;
         public bool glowEnabled = true;
 
-        public int StartColumn => start != null ? start.x : 1;
-        public int StartRow => start != null ? start.y : 3;
-        public int GoalColumn => goal != null ? goal.x : 3;
-        public int GoalRow => goal != null ? goal.y : 3;
+        public int StartColumn => start != null ? start.x : 2;
+        public int StartRow => start != null ? start.y : 2;
+        public int GoalColumn => goal != null ? goal.x : 5;
+        public int GoalRow => goal != null ? goal.y : 5;
         public int GridColumns => grid != null && grid.columns > 0 ? grid.columns : 6;
         public int GridRows => grid != null && grid.rows > 0 ? grid.rows : 6;
 

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using BOKS.Demo;
 using NUnit.Framework;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -18,8 +19,7 @@ namespace BOKS.Tests
         [UnitySetUp]
         public IEnumerator SetUp()
         {
-            SceneManager.LoadScene("BOKS_Level02");
-            yield return null;
+            yield return LoadArchivedScene("BOKS_Level02");
             controller = UnityEngine.Object.FindAnyObjectByType<BOKSLevel2Controller>();
             controller.TimingScale = 0f;
             controller.RestartLevel2();
@@ -134,8 +134,7 @@ namespace BOKS.Tests
         public IEnumerator BlockedMove_UsesEffortInsteadOfStep_ThenFailure()
         {
             BOKSAudioManager.CueTriggered -= RecordCue;
-            SceneManager.LoadScene("BOKS_Level03");
-            yield return null;
+            yield return LoadArchivedScene("BOKS_Level03");
             controller = UnityEngine.Object.FindAnyObjectByType<BOKSLevel2Controller>();
             controller.TimingScale = 0f;
             controller.RestartLevel2();
@@ -167,8 +166,7 @@ namespace BOKS.Tests
             BOKSAudioManager manager = BOKSAudioManager.Instance;
             Assert.That(ActiveListenerCount(), Is.EqualTo(1));
 
-            SceneManager.LoadScene("BOKS_Level03");
-            yield return null;
+            yield return LoadArchivedScene("BOKS_Level03");
 
             Assert.That(BOKSAudioManager.Instance, Is.SameAs(manager));
             Assert.That(BOKSAudioManager.Instance.gameObject.scene.name, Is.EqualTo("DontDestroyOnLoad"));
@@ -178,8 +176,7 @@ namespace BOKS.Tests
         IEnumerator AssertTurnSequence(string scene, BOKSCommandType turn)
         {
             BOKSAudioManager.CueTriggered -= RecordCue;
-            SceneManager.LoadScene(scene);
-            yield return null;
+            yield return LoadArchivedScene(scene);
             controller = UnityEngine.Object.FindAnyObjectByType<BOKSLevel2Controller>();
             controller.TimingScale = 0f;
             controller.RestartLevel2();
@@ -204,6 +201,13 @@ namespace BOKS.Tests
             int frameLimit = 40;
             while (!controller.RunResolved && frameLimit-- > 0) yield return null;
             Assert.That(controller.RunResolved, Is.True);
+        }
+
+        static IEnumerator LoadArchivedScene(string sceneName)
+        {
+            EditorSceneManager.LoadSceneInPlayMode(
+                "Assets/Scenes/Archive/" + sceneName + ".unity", new LoadSceneParameters(LoadSceneMode.Single));
+            yield return null;
         }
 
         static BOKSCommandDragSource FindPalette(BOKSCommandType command)

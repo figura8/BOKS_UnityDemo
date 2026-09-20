@@ -33,8 +33,12 @@ Do not guess when the web implementation can be inspected.
 - Centralized audio system implemented and working (BOKSAudioManager: Music + SFX, semantic cues)
 - Source-faithful level transition implemented (BOKSLevelTransition + BOKS/Shaders/BOKSLevelTransition.shader)
 - Campaign scene: Assets/Scenes/BOKS_Campaign.unity
+- Main Menu scene: Assets/Scenes/BOKS_MainMenu.unity (first build scene; Challenge/Campaign only)
+- Main Menu entry is scene-owned by BOKSMainMenu; do not create a runtime fallback duplicate.
+- The original logo asset is Assets/BOKS/RuntimeAssets/boks-logo.png. It is a Multiple Sprite import; use boks-logo_0 (fileID 7465518780093689404) for menu and Campaign HUD references.
+- Decorative logo Images must not receive raycasts.
 - Campaign smoke test implemented (Tests/PlayMode/BOKSCampaignSmokeTests.cs)
-- Full current test suite: 27/27 passing
+- Last recorded full test suite: 27/27 passing; rerun after the current menu/audio work before declaring a new baseline.
 - Current Unity compile state clean (0 errors)
 
 ## Important invariants
@@ -56,13 +60,18 @@ BOKSCharacterRoot
 └── BOKS Visual
     └── BOKS Art
 
-## Currently deferred visual polish (do NOT start yet)
-- Goal bubble idle / pop VFX
-- BOKS eye movement / blink / idle animation
-- Bee / background animation
-- Per-level theme overrides
-- Available-block glow
-- Minor decoration fidelity (e.g. tree tinting)
+## Current menu handoff
+- Main Menu -> Campaign retains the existing pop and gate transition, then uses the Campaign-owned soft Level 1 reveal.
+- The logo remains fixed above the Challenge bubble and fades opacity only.
+- Current menu-music implementation uses Level01Intro as a loop, then fades it out before Game Loop Main starts on Campaign entry. This requires live Play Mode verification; see CURRENT_TASK.md.
+
+## Android handoff
+- Android Development APK builds successfully and is about 127 MB because it is a Development IL2CPP build; runtime game content is small.
+- The Android player includes only `BOKS_MainMenu`, `BOKS_Campaign`, and campaign Levels 1-10. Level Editor, archive/prototype scenes, and Levels 11+ are not player content.
+- The installed device build exposed reverse portrait: its generated manifest declared `reversePortrait`. Player Settings are fixed Portrait with autorotation/other orientations disabled, and the editor-only `BOKSAndroidManifestOrientationPostprocessor` now forces the generated game activity manifest to standard `portrait`.
+- The Android iris transition was static. The likely cause was runtime-only `Shader.Find` allowing `BOKS/LevelTransition` to be stripped. The shader is now Always Included; Development builds log shader support, graphics API, transition state, and hole radius.
+- A new APK has not yet been built after these two fixes. Next session must rebuild and physically verify upright portrait and the Level 1 -> 2 iris before any further Android work.
+- Do not refactor gameplay, optimize assets, touch the Level Editor, or make further release-build changes before that device verification. GitHub preparation is postponed until tomorrow.
 
 ## Verification requirements
 After any change:

@@ -1,4 +1,7 @@
 {
   "name": "BOKS.Level2.Runtime",
-  "rootNamespace": "BOKS.Demo"
+  "rootNamespace": "BOKS.Demo",
+  "references": [
+    "Unity.InputSystem"
+  ]
 }

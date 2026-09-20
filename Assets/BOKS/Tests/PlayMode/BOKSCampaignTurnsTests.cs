@@ -1,6 +1,7 @@
 using System.Collections;
 using BOKS.Demo;
 using NUnit.Framework;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -19,7 +20,8 @@ namespace BOKS.Tests
 
         IEnumerator Load(string sceneName)
         {
-            SceneManager.LoadScene(sceneName);
+            EditorSceneManager.LoadSceneInPlayMode(
+                "Assets/Scenes/Archive/" + sceneName + ".unity", new LoadSceneParameters(LoadSceneMode.Single));
             yield return null;
             controller = Object.FindAnyObjectByType<BOKSLevel2Controller>();
             Assert.That(controller, Is.Not.Null);

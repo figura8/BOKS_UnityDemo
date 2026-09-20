@@ -1,6 +1,9 @@
 using System.Collections;
+using System.Reflection;
 using BOKS.Demo;
 using NUnit.Framework;
+using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -15,7 +18,8 @@ namespace BOKS.Tests
         [UnitySetUp]
         public IEnumerator OpenLevel2()
         {
-            SceneManager.LoadScene("BOKS_Level02");
+            EditorSceneManager.LoadSceneInPlayMode(
+                "Assets/Scenes/Archive/BOKS_Level02.unity", new LoadSceneParameters(LoadSceneMode.Single));
             yield return null;
             controller = Object.FindAnyObjectByType<BOKSLevel2Controller>();
             Assert.That(controller, Is.Not.Null);
@@ -130,6 +134,95 @@ namespace BOKS.Tests
             Assert.That(controller.LogicalProgramCount, Is.EqualTo(1));
             controller.RestartLevel2();
             yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator LevelEditor_TestLevel_VisiblePlayRunsAndRestoresDraftProgram()
+        {
+            SceneManager.LoadScene("BOKS_LevelEditor");
+            yield return null;
+            yield return null;
+
+            BOKSCampaignAuthoringMode authoring = Object.FindAnyObjectByType<BOKSCampaignAuthoringMode>();
+            Assert.That(authoring, Is.Not.Null);
+            BOKSCampaignView view = authoring.GetComponent<BOKSCampaignView>();
+            controller = view.Gameplay;
+            controller.TimingScale = 0f;
+
+            var draft = new BOKSLevelDefinition
+            {
+                levelNumber = 0,
+                number = 0,
+                characterId = "boks_green",
+                startOri = "right",
+                startDirection = "right",
+                grid = new BOKSGrid { columns = 6, rows = 6 },
+                start = new BOKSGridCell { x = 2, y = 2 },
+                goal = new BOKSGridCell { x = 3, y = 2 },
+                obstacles = new BOKSGridCell[0],
+                mainSlotEnabled = new[] { true, false, false, false, false, false, false, false },
+                fnSlotEnabled = new bool[4],
+                enabledBlocks = new BOKSEnabledBlocks { forward = true }
+            };
+            SetPrivateField(authoring, "draft", draft);
+            SetPrivateField(authoring, "levelNumber", 0);
+            SetPrivateField(authoring, "newLevel", true);
+            draft.NormalizeSourceFields();
+            view.ApplyLevel(draft);
+            Assert.That(controller.TryPlaceCommand(0, BOKSCommandType.Forward), Is.True);
+
+            InvokePrivate(authoring, "TestLevel");
+            Assert.That(controller.GetSlotCommand(0), Is.EqualTo(BOKSCommandType.Forward),
+                "Test Level must retain the visible program when it reapplies the draft.");
+
+            // Recreate the Level Editor scene as the Edit Mode -> Play Mode transition does.
+            // The pending draft and real program must be restored after all runtime Awakes.
+            SceneManager.LoadScene("BOKS_LevelEditor");
+            yield return null;
+            yield return null;
+            yield return null;
+            authoring = Object.FindAnyObjectByType<BOKSCampaignAuthoringMode>();
+            view = authoring.GetComponent<BOKSCampaignView>();
+            controller = view.Gameplay;
+            controller.TimingScale = 0f;
+            Assert.That(controller.HeroColumn, Is.EqualTo(2));
+            Assert.That(controller.HeroRow, Is.EqualTo(2));
+            Assert.That(controller.GetSlotCommand(0), Is.EqualTo(BOKSCommandType.Forward),
+                "The Edit Mode -> Play Mode handoff lost Main slot 1.");
+
+            bool reachedGoal = false;
+            controller.LevelCompleted += _ => reachedGoal = true;
+            controller.PlayButton.onClick.Invoke();
+            int frameLimit = 30;
+            while (!reachedGoal && frameLimit-- > 0) yield return null;
+            Assert.That(reachedGoal, Is.True, "The visible Play button did not reach the authored goal.");
+
+            yield return null;
+            yield return null;
+            Assert.That(controller.HeroColumn, Is.EqualTo(2));
+            Assert.That(controller.HeroRow, Is.EqualTo(2));
+            Assert.That(controller.Facing, Is.EqualTo(BOKSDirection.Right));
+            Assert.That(controller.GetSlotCommand(0), Is.EqualTo(BOKSCommandType.Forward));
+            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo("BOKS_LevelEditor"));
+
+            SessionState.EraseString("BOKS.LevelEditor.TestDraft");
+            SessionState.EraseInt("BOKS.LevelEditor.TestLevelNumber");
+            SessionState.EraseBool("BOKS.LevelEditor.TestNewLevel");
+            SessionState.EraseString("BOKS.LevelEditor.TestProgram");
+        }
+
+        static void SetPrivateField(object target, string name, object value)
+        {
+            FieldInfo field = target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null, name + " field was not found.");
+            field.SetValue(target, value);
+        }
+
+        static void InvokePrivate(object target, string name)
+        {
+            MethodInfo method = target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null, name + " method was not found.");
+            method.Invoke(target, null);
         }
 
         IEnumerator WaitForResolution()
