@@ -1,4 +1,5 @@
 using System.Collections;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
@@ -15,12 +16,34 @@ namespace BOKS.Demo
         const float GateFadeSeconds = 1.65f; // web openAppFromGate gateFadeMs
         const float LevelRevealSeconds = 4.2f; // web #app opacity transition after prestart clears
         const float LevelSettleSeconds = 3.2f; // web #app transform/filter transition
-        const float IntroLogoFadeInSeconds = 1.35f;
-        const float IntroLogoHoldSeconds = .6f;
-        const float IntroLogoFadeOutSeconds = .5f;
-        const float IntroPauseSeconds = .12f;
         const float FinalCompositionFadeInSeconds = .7f;
+        // First-pass intro tuning. These leave the responsive layout's final state untouched.
+        const float CharacterEnterSeconds = .45f;
+        const float CharacterEnterOffset = 170f;
+        const float CharacterStartScale = .78f;
+        const float CharacterStaggerSeconds = .06f;
+        const float CharacterOvershoot = .7f;
+        const float LogoStartTime = .52f;
+        const float LetterEnterSeconds = .3f;
+        const float LetterStaggerSeconds = .07f;
+        const float LetterOvershoot = .85f;
+        const float UmlautEnterSeconds = .28f;
+        const float UmlautDropOffset = 48f;
+        const float UmlautStartScale = .7f;
+        const float UmlautOvershoot = .65f;
+        const float IntroSettleHoldSeconds = .22f;
+        const float IntroRootVerticalOffsetFraction = .065f;
+        const float IntroCharacterRowY = 80f;
+        const float IntroLogoY = -65f;
+        // Temporary inspection switch: keeps the final intro composition visible and hides the bubble.
+        static bool ShowFinalLayoutOnly = false;
+        static bool LogIntroLayout = false;
         [SerializeField] Sprite logoSprite;
+        [Header("Intro composition")]
+        [SerializeField] Sprite characterGreenDown;
+        [SerializeField] Sprite characterRedRight;
+        [SerializeField] Sprite characterYellowLeft;
+        [SerializeField] Sprite characterBlueUp;
         RectTransform bubble;
         RectTransform shell;
         RectTransform glow;
@@ -40,13 +63,56 @@ namespace BOKS.Demo
         CanvasGroup introLogoGroup;
         CanvasGroup finalCompositionGroup;
         RectTransform menuRoot;
+        RectTransform introRoot;
+        Sequence introSequence;
+        IntroElement characterGreen;
+        IntroElement characterRed;
+        IntroElement characterYellow;
+        IntroElement characterBlue;
+        IntroElement letterB;
+        IntroElement letterO;
+        IntroElement letterK;
+        IntroElement letterS;
+        IntroElement umlautLeft;
+        IntroElement umlautRight;
+        bool tabletLayout;
         CanvasGroup revealMask;
         Button startButton;
         Vector2 bubbleHome;
         bool isPopping;
 
+        sealed class IntroElement
+        {
+            public RectTransform Rect { get; }
+            public CanvasGroup Group { get; }
+            public Vector2 FinalPosition { get; }
+            public Vector3 FinalScale { get; }
+            public Quaternion FinalRotation { get; }
+            public float FinalAlpha { get; }
+
+            public IntroElement(RectTransform rect)
+            {
+                Rect = rect;
+                Group = rect.GetComponent<CanvasGroup>();
+                if (Group == null) Group = rect.gameObject.AddComponent<CanvasGroup>();
+                FinalPosition = rect.anchoredPosition;
+                FinalScale = rect.localScale;
+                FinalRotation = rect.localRotation;
+                FinalAlpha = Group.alpha;
+            }
+
+            public void RestoreFinalState()
+            {
+                Rect.anchoredPosition = FinalPosition;
+                Rect.localScale = FinalScale;
+                Rect.localRotation = FinalRotation;
+                Group.alpha = FinalAlpha;
+            }
+        }
+
         void Awake()
         {
+            BOKSDeviceLayout.DetectAndApply();
             Build();
         }
 
@@ -58,6 +124,8 @@ namespace BOKS.Demo
 
         void Build()
         {
+            tabletLayout = BOKSDeviceLayout.CurrentMode == BOKSDeviceLayoutMode.TabletLandscape;
+            Vector2 reference = tabletLayout ? new Vector2(1280f, 800f) : new Vector2(520f, 1000f);
             var canvasGo = new GameObject("Portrait Menu (520 x 1000)", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
             // This canvas owns menuGroup and must follow BOKSMainMenu into DontDestroyOnLoad.
             // Previously it was a separate scene root, so loading Campaign destroyed it while
@@ -67,25 +135,28 @@ namespace BOKS.Demo
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             CanvasScaler scaler = canvasGo.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(520, 1000);
+            scaler.referenceResolution = reference;
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = .5f;
             menuGroup = canvasGo.GetComponent<CanvasGroup>();
             RectTransform root = canvasGo.GetComponent<RectTransform>();
             menuRoot = root;
 
-            Shape("Notebook Background", root, Vector2.zero, new Vector2(520, 1000), BOKSShapeGraphic.ShapeKind.RoundedRectangle,
-                new Color32(247, 247, 241, 255), new Color32(239, 242, 230, 255), 0f);
-            RectTransform introLogo = Logo("MenuLogo", root, new Vector2(0f, 230f), new Vector2(336f, 154f));
-            introLogoGroup = introLogo.gameObject.AddComponent<CanvasGroup>();
-            introLogoGroup.alpha = 0f;
+            Shape("Notebook Background", root, Vector2.zero, reference, BOKSShapeGraphic.ShapeKind.RoundedRectangle,
+                Color.white, Color.white, 0f);
+            introRoot = Rect("IntroRoot", root, Vector2.zero, reference);
+            introRoot.anchoredPosition = Vector2.up * (reference.y * IntroRootVerticalOffsetFraction);
+            introLogoGroup = introRoot.gameObject.AddComponent<CanvasGroup>();
+            introLogoGroup.alpha = 1f;
+            BuildIntroComposition(introRoot);
+            if (LogIntroLayout) LogIntroFinalLayout();
 
-            RectTransform finalComposition = Rect("Final Menu Composition", root, Vector2.zero, new Vector2(520, 1000));
+            RectTransform finalComposition = Rect("Final Menu Composition", root, Vector2.zero, reference);
             finalCompositionGroup = finalComposition.gameObject.AddComponent<CanvasGroup>();
             finalCompositionGroup.alpha = 0f;
             finalCompositionGroup.blocksRaycasts = false;
 
-            bubbleHome = new Vector2(0, -42);
+            bubbleHome = new Vector2(0, tabletLayout ? -20f : -42f);
             bubble = Rect("Challenge Bubble", finalComposition, bubbleHome, new Vector2(164, 164));
             glow = Rect("Bubble Glow", bubble, Vector2.zero, new Vector2(164, 164));
             glowGroup = glow.gameObject.AddComponent<CanvasGroup>();
@@ -130,11 +201,111 @@ namespace BOKS.Demo
 
         IEnumerator PlayMenuIntro()
         {
-            yield return FadeGroup(introLogoGroup, 0f, 1f, IntroLogoFadeInSeconds, scale: Vector2.one);
-            yield return WaitUnscaled(IntroLogoHoldSeconds);
+            if (ShowFinalLayoutOnly) yield break;
+            introSequence = CreateIntroSequence();
+            if (introSequence != null) yield return introSequence.WaitForCompletion();
             yield return FadeFinalComposition();
             finalCompositionGroup.blocksRaycasts = true;
             startButton.interactable = true;
+        }
+
+        void OnDestroy()
+        {
+            introSequence?.Kill();
+        }
+
+        Sequence CreateIntroSequence()
+        {
+            introSequence?.Kill();
+            if (introRoot == null) return null;
+
+            IntroElement[] all = { characterGreen, characterRed, characterYellow, characterBlue, letterB, letterO, letterK, letterS, umlautLeft, umlautRight };
+            foreach (IntroElement element in all) element?.RestoreFinalState();
+
+            PrepareCharacter(characterGreen, Vector2.up * CharacterEnterOffset);
+            PrepareCharacter(characterRed, Vector2.left * CharacterEnterOffset);
+            PrepareCharacter(characterYellow, Vector2.right * CharacterEnterOffset);
+            PrepareCharacter(characterBlue, Vector2.down * CharacterEnterOffset);
+            PrepareLetter(letterB);
+            PrepareLetter(letterO);
+            PrepareLetter(letterK);
+            PrepareLetter(letterS);
+            PrepareUmlaut(umlautLeft);
+            PrepareUmlaut(umlautRight);
+
+            Sequence sequence = DOTween.Sequence().SetId(introRoot.gameObject).SetUpdate(true);
+            InsertCharacter(sequence, characterGreen, 0f);
+            InsertCharacter(sequence, characterRed, CharacterStaggerSeconds);
+            InsertCharacter(sequence, characterYellow, CharacterStaggerSeconds * 2f);
+            InsertCharacter(sequence, characterBlue, CharacterStaggerSeconds * 3f);
+
+            InsertLetter(sequence, letterB, LogoStartTime);
+            InsertLetter(sequence, letterO, LogoStartTime + LetterStaggerSeconds);
+            InsertUmlaut(sequence, umlautLeft, LogoStartTime + LetterStaggerSeconds + .01f);
+            InsertUmlaut(sequence, umlautRight, LogoStartTime + LetterStaggerSeconds + .03f);
+            InsertLetter(sequence, letterK, LogoStartTime + LetterStaggerSeconds * 2f);
+            InsertLetter(sequence, letterS, LogoStartTime + LetterStaggerSeconds * 3f);
+            sequence.AppendInterval(IntroSettleHoldSeconds);
+            sequence.OnComplete(() =>
+            {
+                foreach (IntroElement element in all) element?.RestoreFinalState();
+            });
+            return sequence;
+        }
+
+        static void PrepareCharacter(IntroElement element, Vector2 offset)
+        {
+            if (element == null) return;
+            element.Rect.anchoredPosition = element.FinalPosition + offset;
+            element.Rect.localScale = element.FinalScale * CharacterStartScale;
+            element.Rect.localRotation = element.FinalRotation;
+            element.Group.alpha = 0f;
+        }
+
+        static void PrepareLetter(IntroElement element)
+        {
+            if (element == null) return;
+            element.Rect.anchoredPosition = element.FinalPosition;
+            element.Rect.localScale = Vector3.zero;
+            element.Rect.localRotation = element.FinalRotation;
+            element.Group.alpha = 0f;
+        }
+
+        static void PrepareUmlaut(IntroElement element)
+        {
+            if (element == null) return;
+            element.Rect.anchoredPosition = element.FinalPosition + Vector2.up * UmlautDropOffset;
+            element.Rect.localScale = element.FinalScale * UmlautStartScale;
+            element.Rect.localRotation = element.FinalRotation;
+            element.Group.alpha = 0f;
+        }
+
+        static void InsertCharacter(Sequence sequence, IntroElement element, float at)
+        {
+            if (element == null) return;
+            sequence.Insert(at, DOTween.To(() => element.Rect.anchoredPosition, value => element.Rect.anchoredPosition = value,
+                element.FinalPosition, CharacterEnterSeconds).SetEase(DG.Tweening.Ease.OutBack, CharacterOvershoot));
+            sequence.Insert(at, element.Rect.DOScale(element.FinalScale, CharacterEnterSeconds).SetEase(DG.Tweening.Ease.OutBack, CharacterOvershoot));
+            sequence.Insert(at, DOTween.To(() => element.Group.alpha, value => element.Group.alpha = value,
+                element.FinalAlpha, CharacterEnterSeconds));
+        }
+
+        static void InsertLetter(Sequence sequence, IntroElement element, float at)
+        {
+            if (element == null) return;
+            sequence.Insert(at, element.Rect.DOScale(element.FinalScale, LetterEnterSeconds).SetEase(DG.Tweening.Ease.OutBack, LetterOvershoot));
+            sequence.Insert(at, DOTween.To(() => element.Group.alpha, value => element.Group.alpha = value,
+                element.FinalAlpha, LetterEnterSeconds));
+        }
+
+        static void InsertUmlaut(Sequence sequence, IntroElement element, float at)
+        {
+            if (element == null) return;
+            sequence.Insert(at, DOTween.To(() => element.Rect.anchoredPosition, value => element.Rect.anchoredPosition = value,
+                element.FinalPosition, UmlautEnterSeconds).SetEase(DG.Tweening.Ease.OutBack, UmlautOvershoot));
+            sequence.Insert(at, element.Rect.DOScale(element.FinalScale, UmlautEnterSeconds).SetEase(DG.Tweening.Ease.OutBack, UmlautOvershoot));
+            sequence.Insert(at, DOTween.To(() => element.Group.alpha, value => element.Group.alpha = value,
+                element.FinalAlpha, UmlautEnterSeconds));
         }
 
         IEnumerator FadeFinalComposition()
@@ -251,7 +422,7 @@ namespace BOKS.Demo
             canvas.sortingOrder = -10;
             CanvasScaler scaler = maskGo.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(520f, 1000f);
+            scaler.referenceResolution = tabletLayout ? new Vector2(1280f, 800f) : new Vector2(520f, 1000f);
             scaler.matchWidthOrHeight = .5f;
             revealMask = maskGo.GetComponent<CanvasGroup>();
             revealMask.alpha = 1f;
@@ -264,7 +435,7 @@ namespace BOKS.Demo
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
-            neutral.color = new Color32(247, 247, 241, 255); // web body.prestart notebook neutral
+            neutral.color = Color.white;
             neutral.raycastTarget = true;
             DontDestroyOnLoad(maskGo);
         }
@@ -396,14 +567,76 @@ namespace BOKS.Demo
             return ((ay * t + by) * t + cy) * t;
         }
 
-        RectTransform Logo(string name, RectTransform parent, Vector2 position, Vector2 size)
+        void BuildIntroComposition(RectTransform introRoot)
+        {
+            const float characterSize = 82f;
+            const float characterGap = 16f;
+            float startX = -(characterSize * 1.5f + characterGap * 1.5f);
+
+            characterGreen = new IntroElement(AddImage("CharacterGreen", introRoot, characterGreenDown, new Vector2(startX, IntroCharacterRowY), new Vector2(characterSize, characterSize)));
+            characterRed = new IntroElement(AddImage("CharacterRed", introRoot, characterRedRight, new Vector2(startX + characterSize + characterGap, IntroCharacterRowY), new Vector2(characterSize, characterSize)));
+            characterYellow = new IntroElement(AddImage("CharacterYellow", introRoot, characterYellowLeft, new Vector2(startX + (characterSize + characterGap) * 2f, IntroCharacterRowY), new Vector2(characterSize, characterSize)));
+            characterBlue = new IntroElement(AddImage("CharacterBlue", introRoot, characterBlueUp, new Vector2(startX + (characterSize + characterGap) * 3f, IntroCharacterRowY), new Vector2(characterSize, characterSize)));
+
+            RectTransform logoRoot = Rect("LogoRoot", introRoot, new Vector2(0f, IntroLogoY), new Vector2(336f, 154f));
+            letterB = new IntroElement(AddLogoLayer("LetterB", logoRoot, "BOKS/Intro/LetterB"));
+            letterO = new IntroElement(AddLogoLayer("LetterO", logoRoot, "BOKS/Intro/LetterO"));
+            umlautLeft = new IntroElement(AddLogoLayer("UmlautLeft", logoRoot, "BOKS/Intro/UmlautLeft"));
+            umlautRight = new IntroElement(AddLogoLayer("UmlautRight", logoRoot, "BOKS/Intro/UmlautRight"));
+            letterK = new IntroElement(AddLogoLayer("LetterK", logoRoot, "BOKS/Intro/LetterK"));
+            letterS = new IntroElement(AddLogoLayer("LetterS", logoRoot, "BOKS/Intro/LetterS"));
+        }
+
+        static RectTransform AddLogoLayer(string name, RectTransform parent, string resourcePath)
+        {
+            Sprite sprite = Resources.Load<Sprite>(resourcePath);
+            if (sprite == null)
+            {
+                Object asset = Resources.Load(resourcePath);
+                Debug.LogError($"[BOKS INTRO] {name}: failed to load Sprite at Resources/{resourcePath}. Asset type: " +
+                    (asset == null ? "missing" : asset.GetType().FullName));
+            }
+            return AddImage(name, parent, sprite, Vector2.zero, parent.sizeDelta);
+        }
+
+        static RectTransform AddImage(string name, RectTransform parent, Sprite sprite, Vector2 position, Vector2 size)
         {
             RectTransform rect = Rect(name, parent, position, size);
-            Image logo = rect.gameObject.AddComponent<Image>();
-            logo.sprite = logoSprite;
-            logo.preserveAspect = true;
-            logo.raycastTarget = false;
+            Image image = rect.gameObject.AddComponent<Image>();
+            image.sprite = sprite;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
             return rect;
+        }
+
+        void LogIntroFinalLayout()
+        {
+            Debug.Log($"[BOKS INTRO] IntroRoot final: anchoredPosition={introRoot.anchoredPosition}, size={introRoot.sizeDelta}, " +
+                $"scale={introRoot.localScale}, alpha={introLogoGroup.alpha}");
+            LogIntroElement(characterGreen);
+            LogIntroElement(characterRed);
+            LogIntroElement(characterYellow);
+            LogIntroElement(characterBlue);
+            LogIntroElement(letterB);
+            LogIntroElement(letterO);
+            LogIntroElement(umlautLeft);
+            LogIntroElement(umlautRight);
+            LogIntroElement(letterK);
+            LogIntroElement(letterS);
+        }
+
+        static void LogIntroElement(IntroElement element)
+        {
+            if (element == null)
+            {
+                Debug.LogError("[BOKS INTRO] Missing intro element.");
+                return;
+            }
+            Image image = element.Rect.GetComponent<Image>();
+            string sprite = image != null && image.sprite != null ? image.sprite.name : "MISSING";
+            string status = image != null && image.sprite != null ? "OK" : "FAILED";
+            Debug.Log($"[BOKS INTRO] {element.Rect.name}: sprite={sprite} ({status}), anchoredPosition={element.FinalPosition}, " +
+                $"size={element.Rect.sizeDelta}, scale={element.FinalScale}, rotation={element.FinalRotation.eulerAngles}, alpha={element.FinalAlpha}");
         }
 
         static void AddFlower(RectTransform parent)
