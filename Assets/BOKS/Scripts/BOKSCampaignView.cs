@@ -19,6 +19,7 @@ namespace BOKS.Demo
         [SerializeField] Sprite treeSprite;
         [SerializeField] Sprite daisySprite;
         [SerializeField] Sprite beeSprite;
+        string campaignPlayerCharacterId;
         readonly List<BOKSDecorationReaction> decorationReactions = new List<BOKSDecorationReaction>();
         BOKSLevel1Onboarding onboarding;
 
@@ -28,6 +29,90 @@ namespace BOKS.Demo
 
         public BOKSLevel2Controller Gameplay => gameplay;
 
+        /// <summary>Campaign-owned character selection. Level data remains intact but no longer replaces this set.</summary>
+        public void SetCampaignPlayerCharacter(string characterId)
+        {
+            if (!string.IsNullOrEmpty(characterId)) campaignPlayerCharacterId = characterId;
+        }
+
+        public sealed class VisualTransitionPreview
+        {
+            public RectTransform Stage { get; }
+            public RectTransform Hero { get; }
+            public RectTransform HeroVisual { get; }
+            public RectTransform HeroArt { get; }
+
+            public VisualTransitionPreview(RectTransform stage, RectTransform hero, RectTransform heroVisual, RectTransform heroArt)
+            {
+                Stage = stage;
+                Hero = hero;
+                HeroVisual = heroVisual;
+                HeroArt = heroArt;
+            }
+        }
+
+        /// <summary>
+        /// Creates an inactive copy of this presentation and applies a level definition to it for
+        /// a campaign-level scroll transition. Its gameplay/controller scripts are disabled before it
+        /// becomes visible, so it is strictly a visual staging board.
+        /// </summary>
+        public VisualTransitionPreview CreateVisualTransitionPreview(BOKSLevelDefinition level)
+        {
+            GameObject source = gameObject;
+            RectTransform liveStage = transform as RectTransform;
+            GameObject stageObject = new GameObject("Next Level Visual Preview Stage", typeof(RectTransform));
+            RectTransform stage = stageObject.GetComponent<RectTransform>();
+            stage.SetParent(transform.parent, false);
+            stage.anchorMin = liveStage.anchorMin;
+            stage.anchorMax = liveStage.anchorMax;
+            stage.pivot = liveStage.pivot;
+            stage.sizeDelta = liveStage.sizeDelta;
+            stage.anchoredPosition = liveStage.anchoredPosition;
+            // An inactive parent prevents the clone's Awake from ever running before its gameplay
+            // scripts are removed. This is what prevents the Level 1 spawn visual from flashing.
+            stageObject.SetActive(false);
+            GameObject previewObject = Instantiate(source, stage, false);
+            RectTransform previewRect = previewObject.transform as RectTransform;
+            previewRect.anchoredPosition = Vector2.zero;
+
+            previewObject.name = "Next Level Visual Preview";
+            BOKSCampaignView preview = previewObject.GetComponent<BOKSCampaignView>();
+            BOKSCampaignController previewCampaign = previewObject.GetComponent<BOKSCampaignController>();
+            BOKSLevel2Controller previewGameplay = previewObject.GetComponent<BOKSLevel2Controller>();
+            BOKSLevel1Onboarding previewOnboarding = previewObject.GetComponent<BOKSLevel1Onboarding>();
+            if (previewCampaign != null) previewCampaign.enabled = false;
+            if (previewGameplay != null) previewGameplay.enabled = false;
+            if (previewOnboarding != null) previewOnboarding.enabled = false;
+            if (preview != null) preview.enabled = false;
+
+            // Instantiate does not copy this runtime-only private field. Carry the campaign-owned
+            // character set into the visual-only preview before it resolves the next direction's
+            // sprite, so transition blending can never fall back to the level-authored colour.
+            if (preview != null) preview.SetCampaignPlayerCharacter(campaignPlayerCharacterId);
+
+            // ApplyLevel is safe to call while the copy is inactive: it only constructs and lays
+            // out UI from the existing data-driven definition. No cloned controller is enabled.
+            preview.ApplyLevel(level);
+            RectTransform previewHero = previewGameplay != null ? previewGameplay.HeroRoot : null;
+            RectTransform previewHeroVisual = previewGameplay != null ? previewGameplay.HeroVisual : null;
+            RectTransform previewHeroArt = previewGameplay != null && previewGameplay.HeroArt != null ? previewGameplay.HeroArt.rectTransform : null;
+            if (previewGameplay != null) previewGameplay.SetTransitionHeroVisible(false);
+            CanvasGroup previewGroup = previewObject.GetComponent<CanvasGroup>();
+            if (previewGroup == null) previewGroup = previewObject.AddComponent<CanvasGroup>();
+            previewGroup.interactable = false;
+            previewGroup.blocksRaycasts = false;
+
+            // Remove the clone's runtime owners while it is still inactive. This guarantees that
+            // activating the preview cannot run a second Campaign/Level controller or overwrite
+            // the staged next-level data through an Awake callback.
+            if (previewCampaign != null) DestroyImmediate(previewCampaign);
+            if (previewGameplay != null) DestroyImmediate(previewGameplay);
+            if (previewOnboarding != null) DestroyImmediate(previewOnboarding);
+            if (preview != null) DestroyImmediate(preview);
+            stageObject.SetActive(true);
+            return new VisualTransitionPreview(stage, previewHero, previewHeroVisual, previewHeroArt);
+        }
+
         // Configure is an editor scene-builder API. At runtime Unity restores the serialized
         // references directly, so the onboarding component must be installed/bound here as well.
         void Awake() => EnsureRuntimeBindings();
@@ -35,6 +120,7 @@ namespace BOKS.Demo
         void EnsureRuntimeBindings()
         {
             if (gameplay == null || paletteButtons == null || paletteButtons.Length == 0 || slotRoots == null) return;
+            BOKSProgramAreaPresentation.Ensure(transform as RectTransform);
             gameplay.HeroEnteredCell -= TriggerDecorationReactionsAt;
             gameplay.HeroEnteredCell += TriggerDecorationReactionsAt;
             onboarding = GetComponent<BOKSLevel1Onboarding>();
@@ -118,7 +204,10 @@ namespace BOKS.Demo
                 foreach (BOKSDecoration decoration in level.decorations)
                     if (decoration != null) AddDecoration(decoration);
 
-            gameplay.LoadLevel(level, SpritesFor(level.characterId));
+            string activeCharacterId = !string.IsNullOrEmpty(campaignPlayerCharacterId)
+                ? campaignPlayerCharacterId
+                : level.characterId;
+            gameplay.LoadLevel(level, SpritesFor(activeCharacterId));
             onboarding?.Begin(level.levelNumber == 1);
         }
 

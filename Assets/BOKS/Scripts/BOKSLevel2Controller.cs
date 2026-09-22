@@ -110,6 +110,9 @@ namespace BOKS.Demo
 
         /// <summary>Grid-cell anchored position of the character root. Must never change during a turn.</summary>
         public Vector2 HeroRootAnchoredPosition => hero != null ? hero.anchoredPosition : Vector2.zero;
+        public RectTransform HeroRoot => hero;
+        public RectTransform HeroVisual => heroVisual;
+        public Image HeroArt => heroArt;
 
         /// <summary>Name of the currently displayed directional sprite (test/observability hook).</summary>
         public string HeroSpriteName => (heroArt != null && heroArt.sprite != null) ? heroArt.sprite.name : string.Empty;
@@ -1014,6 +1017,13 @@ namespace BOKS.Demo
             SetPaletteInteractable(!locked);
             if (playButton != null) playButton.interactable = !locked;
         }
+
+        /// <summary>Visual-only handoff hook for consecutive campaign-level scroll transitions.</summary>
+        public void SetTransitionHeroVisible(bool visible)
+        {
+            if (hero != null) hero.gameObject.SetActive(visible);
+        }
+
 
         void CacheInitialState()
         {

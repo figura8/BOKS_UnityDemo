@@ -22,7 +22,7 @@ namespace BOKS.Demo
         public static BOKSDeviceLayoutMode CurrentMode { get; private set; } = BOKSDeviceLayoutMode.PhonePortrait;
         public static float EstimatedDiagonalInches { get; private set; } = -1f;
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+#if UNITY_EDITOR || DEBUG
         public enum TestOverride
         {
             Auto,
@@ -45,7 +45,7 @@ namespace BOKS.Demo
                 out float diagonalInches, out float smallestWidthDp);
             EstimatedDiagonalInches = diagonalInches;
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+#if UNITY_EDITOR || DEBUG
             if (LayoutTestOverride == TestOverride.ForcePhonePortrait)
             {
                 CurrentMode = BOKSDeviceLayoutMode.PhonePortrait;
@@ -66,7 +66,7 @@ namespace BOKS.Demo
                 ? ScreenOrientation.Portrait
                 : ScreenOrientation.AutoRotation;
 
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
+#if UNITY_EDITOR || DEBUG
             string diagonal = diagonalInches > 0f ? diagonalInches.ToString("0.00") + "in" : "unavailable";
             string smallestDp = smallestWidthDp > 0f ? smallestWidthDp.ToString("0") + "dp" : "unavailable";
             Debug.Log($"[BOKS DEVICE] {CurrentMode} resolution={Screen.width}x{Screen.height} dpi={Screen.dpi:0.##} diagonal={diagonal} smallestWidth={smallestDp} model={SystemInfo.deviceModel}");
@@ -141,7 +141,7 @@ namespace BOKS.Demo
 
         public static void RefreshAll()
         {
-            foreach (BOKSCampaignResponsiveLayout layout in UnityEngine.Object.FindObjectsByType<BOKSCampaignResponsiveLayout>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (BOKSCampaignResponsiveLayout layout in UnityEngine.Object.FindObjectsByType<BOKSCampaignResponsiveLayout>(FindObjectsInactive.Include))
                 layout.ApplyLayout(true);
         }
 

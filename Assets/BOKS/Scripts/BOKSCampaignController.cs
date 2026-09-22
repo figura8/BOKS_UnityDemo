@@ -11,10 +11,12 @@ namespace BOKS.Demo
 
         [SerializeField] BOKSCampaignView view;
         BOKSLevelTransition transition;
+        BOKSLevelScrollTransition levelScrollTransition;
         Text completionLabel;
 
         public int CurrentLevel { get; private set; }
         public bool CampaignComplete { get; private set; }
+        public string PlayerCharacterId { get; private set; }
         public bool AuthoringMode { get; set; }
         public BOKSLevel2Controller Gameplay => view != null ? view.Gameplay : null;
 
@@ -22,8 +24,16 @@ namespace BOKS.Demo
 
         void Awake()
         {
+            BOKSDeviceLayout.DetectAndApply();
+            BOKSCampaignResponsiveLayout.Ensure(transform as RectTransform);
             transition = gameObject.AddComponent<BOKSLevelTransition>();
+            levelScrollTransition = gameObject.AddComponent<BOKSLevelScrollTransition>();
             view.Gameplay.LevelCompleted += OnLevelCompleted;
+            BOKSLevelDefinition firstLevel = BOKSLevelLoader.CampaignLevel(FirstLevel);
+            PlayerCharacterId = firstLevel != null && !string.IsNullOrEmpty(firstLevel.characterId)
+                ? firstLevel.characterId
+                : "boks_green";
+            view.SetCampaignPlayerCharacter(PlayerCharacterId);
             ApplyLevel(FirstLevel);
         }
 
@@ -45,7 +55,26 @@ namespace BOKS.Demo
 
             controller.SetCampaignInputLocked(true);
             int next = CurrentLevel + 1;
-            transition.Play(() => ApplyLevel(next));
+            BOKSLevelDefinition nextLevel = BOKSLevelLoader.CampaignLevel(next);
+            if (nextLevel != null && levelScrollTransition != null)
+            {
+                levelScrollTransition.Play(view, nextLevel, () =>
+                {
+                    if (!ApplyLevel(next))
+                    {
+                        Debug.LogWarning($"[BOKS CAMPAIGN] Scroll handoff could not apply level {next}; input restored.");
+                        controller.SetCampaignInputLocked(false);
+                    }
+                    else controller.SetCampaignInputLocked(false);
+                });
+                return;
+            }
+
+            Debug.LogWarning($"[BOKS CAMPAIGN] Level {next} could not be staged for scroll; using iris fallback.");
+            transition.Play(() =>
+            {
+                if (!ApplyLevel(next)) controller.SetCampaignInputLocked(false);
+            });
         }
 
         public bool ApplyLevel(int levelNumber)

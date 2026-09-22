@@ -1,5 +1,118 @@
 # CURRENT TASK
 
+## Session handoff — generalized Campaign scroll transition
+
+### Completed state
+
+- The Bubble Bobble-style vertical Campaign transition is generalized for every valid `currentLevel -> nextLevel` step.
+- The live current level and a fully prepared next-level visual presentation are visible together during the vertical scroll, separated by the transition gap.
+- The staged next level is visual-only: input stays locked and only the live gameplay controller is active.
+- BOKS remains continuously visible through the atomic gameplay-art to transition-proxy handoff and travels toward the actual spawn position of the next level.
+- The approved softened movement start and slower pacing are retained: approximately 1.8–2.0 seconds total.
+- Campaign BOKS colour is initialized from Level 1 and remains green across all levels.
+- Direction during transport comes from `nextLevel.Direction`; the proxy uses authored directional sprites from the persistent Campaign colour set, with a maximum ~18° local tilt and a short cross-blend. The prior transient non-green flash is fixed: the visual preview explicitly receives the persistent campaign character before resolving its target sprite.
+- The final Campaign level still uses its existing Campaign Complete behaviour rather than scrolling.
+- The old iris transition remains only as a safe fallback if the next-level scroll cannot be staged.
+- Temporary A/B/C, C0–C4 and V0–V4 scroll diagnostics have been removed; only concise fallback warnings remain.
+- `BOKSDeviceLayout.cs` uses the current `FindObjectsByType` overload and `UNITY_EDITOR || DEBUG`; its deprecated API and `DEVELOPMENT_BUILD` warnings are cleaned up.
+- DOTween’s two legacy `PluginImporter.serializedVersion: 1` warnings (`DOTween.dll.meta` and `DOTweenEditor.dll.meta`) are intentionally untouched. Do not manually regenerate or edit those plugin metadata files.
+
+### Verification
+
+- Unity C# compilation completed successfully after the persistent-colour preview fix.
+- Do not change the approved scroll timing, proxy geometry, handoff, Campaign colour persistence, or final-level behaviour without new visual review.
+
+---
+
+## Session handoff — DOTween Main Menu intro
+
+### Goal and current state
+
+- Goal: create an animated BOKS Main Menu intro using DOTween.
+- `Assets/Scenes/BOKS_MainMenu.unity` owns `BOKSMainMenu`, which builds the menu UI at runtime.
+- DOTween was already present at `Assets/Plugins/Demigiant/DOTween`; it is configured in Unity and the intro now uses a DOTween `Sequence`.
+- The approved static composition is the **end state**. Do not move or resize it when tuning animation:
+
+```text
+IntroRoot
+├─ CharacterGreen
+├─ CharacterRed
+├─ CharacterYellow
+├─ CharacterBlue
+└─ LogoRoot
+   ├─ LetterB
+   ├─ LetterO
+   ├─ UmlautLeft
+   ├─ UmlautRight
+   ├─ LetterK
+   └─ LetterS
+```
+
+- Character sprites are existing runtime assets: Green → down, Red → right, Yellow → left, Blue → up.
+- `IntroRoot` is centred/responsive for phone and tablet. The four characters and BÖKS logo are visible in the Main Menu.
+- Original `Assets/BOKS/RuntimeAssets/boks-logo.png` and `Assets/BOKS/Source/UI/Brand/boks-logo.svg` were not modified.
+
+### Logo asset debugging outcome
+
+- The first six separated logo assets were SVGs. Unity imported them as `UnityEngine.UIElements.VectorImage`, so every `Resources.Load<Sprite>("BOKS/Intro/...")` returned null.
+- Those temporary SVGs were replaced with transparent PNG sprites rasterized from the original SVG paths. Current intro assets are in `Assets/Resources/BOKS/Intro/`:
+  - `LetterB.png`, `LetterO.png`, `LetterK.png`, `LetterS.png`
+  - `UmlautLeft.png`, `UmlautRight.png`
+- All six are imported as `Sprite (2D and UI)` single sprites and now load successfully.
+
+### Animation status / next session
+
+- Earlier DOTween character movement was tested successfully. Static-layout debug mode was used during composition work and is now disabled (`ShowFinalLayoutOnly = false`).
+- Current Sequence caches each animated UI element's final `anchoredPosition`, `localScale`, `localRotation`, and alpha; it starts from temporary values and restores/tweens to the approved final state.
+- Current direction: Green enters from above; Red left; Yellow right; Blue below. Characters use moderate `OutBack`, fade/scale in, and stagger.
+- B → O → K → S scale/fade in with overlapping stagger; umlaut dots arrive from slightly above with a subtle `OutBack` settle.
+- Target Sequence duration is about 1.2–1.5 seconds. Keep travel offsets, timing, and staggers grouped as easy-to-tune constants. Kill the previous Sequence before recreating it.
+- The original flower/Challenge bubble remains part of the existing menu flow. It is shown after the intro sequence and still needs final coordination/polish with the intro.
+- Preserve the existing `BOKS_Campaign` transition.
+
+### Files changed during this session
+
+- `Assets/BOKS/Scripts/BOKSMainMenu.cs` — runtime intro hierarchy, PNG logo loading/debugging, cached-final-state DOTween Sequence and tuning constants.
+- `Assets/Scenes/BOKS_MainMenu.unity` — serialized references for the four existing character sprites.
+- `Assets/Resources/BOKS/Intro/LetterB.png`, `LetterO.png`, `LetterK.png`, `LetterS.png`, `UmlautLeft.png`, `UmlautRight.png` and their `.meta` files — new transparent intro logo sprites.
+- `CURRENT_TASK.md`, `AGENT_CONTEXT.md` — session handoff documentation.
+
+### Worktree note
+
+- The worktree was already dirty before this session. Preserve unrelated existing changes; do not assume every modified/untracked file belongs to this intro work.
+
+---
+
+## Session handoff — mobile layout and Program Area visual polish
+
+### Stable GitHub baseline
+
+- Published baseline: `bb70b2999027c0ac01a5960c8ade67e5fcd2daea`.
+- Do not rewrite Git history or start new features tonight.
+
+### Current mobile layout state
+
+- Mobile device-layout foundation is implemented: phones use `PhonePortrait`; Android tablets and iPad use `TabletLandscape`.
+- The Unity Editor provides `BOKS > Layout Test > Auto`, `Force Phone Portrait`, and `Force Tablet Landscape` for Game View preview. These overrides are Editor/Development-only and do not alter release classification.
+- Tablet landscape layout is visually working in Game View.
+- Preserve phone/tablet behavior, Android orientation handling, Android iris-transition shader inclusion, campaign Levels 1–10, and the exclusion of the Level Editor from player builds.
+
+### Program Area state
+
+- Main and Function read as separate visual zones while retaining the real 8 Main and 4 Function interactive slots.
+- The Function area has a pale-blue background, blue dashed separator, blue connector behind its four centered slots, and a small blue start marker.
+- It contains no Function text and no Function icon.
+
+### Next visual polish task
+
+**Remove the visible blue outer border around the Function panel.**
+
+- Keep the pale-blue fill, blue dashed separator, blue connector, and small blue start marker.
+- Remove only the rectangular blue outline/stroke.
+- Do not move or resize slots, and do not change drag/drop, Function execution, gameplay, responsive layout, or hierarchy structure.
+
+---
+
 ## Android phone test build
 
 ### Current state
@@ -111,61 +224,3 @@ The current Unity project is stable and checkpointed. Preserve this baseline bef
 ### Next work
 
 Start with the five live Play Mode verification/polish items in the Session handoff above. Do not start Free Play, Tutorial, or unrelated Campaign work until that menu logo/audio handoff is verified with zero Console errors.
-## Session handoff — DOTween Main Menu intro
-
-### Goal and current state
-
-- Goal: create an animated BOKS Main Menu intro using DOTween.
-- `Assets/Scenes/BOKS_MainMenu.unity` owns `BOKSMainMenu`, which builds the menu UI at runtime.
-- DOTween was already present at `Assets/Plugins/Demigiant/DOTween`; it is configured in Unity and the intro now uses a DOTween `Sequence`.
-- The approved static composition is the **end state**. Do not move or resize it when tuning animation:
-
-```text
-IntroRoot
-├─ CharacterGreen
-├─ CharacterRed
-├─ CharacterYellow
-├─ CharacterBlue
-└─ LogoRoot
-   ├─ LetterB
-   ├─ LetterO
-   ├─ UmlautLeft
-   ├─ UmlautRight
-   ├─ LetterK
-   └─ LetterS
-```
-
-- Character sprites are existing runtime assets: Green → down, Red → right, Yellow → left, Blue → up.
-- `IntroRoot` is centred/responsive for phone and tablet. The four characters and BÖKS logo are visible in the Main Menu.
-- Original `Assets/BOKS/RuntimeAssets/boks-logo.png` and `Assets/BOKS/Source/UI/Brand/boks-logo.svg` were not modified.
-
-### Logo asset debugging outcome
-
-- The first six separated logo assets were SVGs. Unity imported them as `UnityEngine.UIElements.VectorImage`, so every `Resources.Load<Sprite>("BOKS/Intro/...")` returned null.
-- Those temporary SVGs were replaced with transparent PNG sprites rasterized from the original SVG paths. Current intro assets are in `Assets/Resources/BOKS/Intro/`:
-  - `LetterB.png`, `LetterO.png`, `LetterK.png`, `LetterS.png`
-  - `UmlautLeft.png`, `UmlautRight.png`
-- All six are imported as `Sprite (2D and UI)` single sprites and now load successfully.
-
-### Animation status / next session
-
-- Earlier DOTween character movement was tested successfully. Static-layout debug mode was used during composition work and is now disabled (`ShowFinalLayoutOnly = false`).
-- Current Sequence caches each animated UI element's final `anchoredPosition`, `localScale`, `localRotation`, and alpha; it starts from temporary values and restores/tweens to the approved final state.
-- Current direction: Green enters from above; Red left; Yellow right; Blue below. Characters use moderate `OutBack`, fade/scale in, and stagger.
-- B → O → K → S scale/fade in with overlapping stagger; umlaut dots arrive from slightly above with a subtle `OutBack` settle.
-- Target Sequence duration is about 1.2–1.5 seconds. Keep travel offsets, timing, and staggers grouped as easy-to-tune constants. Kill the previous Sequence before recreating it.
-- The original flower/Challenge bubble remains part of the existing menu flow. It is shown after the intro sequence and still needs final coordination/polish with the intro.
-- Preserve the existing `BOKS_Campaign` transition.
-
-### Files changed during this session
-
-- `Assets/BOKS/Scripts/BOKSMainMenu.cs` — runtime intro hierarchy, PNG logo loading/debugging, cached-final-state DOTween Sequence and tuning constants.
-- `Assets/Scenes/BOKS_MainMenu.unity` — serialized references for the four existing character sprites.
-- `Assets/Resources/BOKS/Intro/LetterB.png`, `LetterO.png`, `LetterK.png`, `LetterS.png`, `UmlautLeft.png`, `UmlautRight.png` and their `.meta` files — new transparent intro logo sprites.
-- `CURRENT_TASK.md`, `AGENT_CONTEXT.md` — session handoff documentation.
-
-### Worktree note
-
-- The worktree was already dirty before this session. Preserve unrelated existing changes; do not assume every modified/untracked file belongs to this intro work.
-
----
