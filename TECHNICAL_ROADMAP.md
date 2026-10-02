@@ -179,11 +179,31 @@ Known structural risk:
 - Same level constructed again in live presentation.
 - Old and next visual presentation coexist during scroll.
 
-Do not optimize this system until device measurements justify the change. Scope timings measure synchronous elapsed work, not GPU time or all deferred Unity work. Cleanup measures deactivation/destruction scheduling; frame statistics include the final frame. The existing panel alone cannot attribute GC, Canvas rebuild or GPU cost conclusively.
+Device measurements justified a narrowly scoped optimization, now accepted after real Redmi gameplay testing (2026-10-02). The primary scroll bottleneck was UGUI Graphic/Canvas rebuild work during movement, amplified by Pixel Perfect; an explicit global Canvas.ForceUpdateCanvases() also caused a setup hitch.
+
+Accepted implementation:
+
+- Remove the global forced Canvas update from proxy setup.
+- Capture proxy geometry after the existing natural frame-end Canvas update, without adding a wait frame.
+- Disable Pixel Perfect only for the Bubble Bobble scroll and restore its exact previous value on completion and cancellation/cleanup paths.
+- Preserve duration, easing, hero handoff and gameplay/progression. Keep transition diagnostics available.
+
+Redmi device results (approximate before -> after):
+
+- Proxy ForceCanvas: 57 -> 0 ms.
+- ProxySetup: 66 -> 10 ms.
+- UI graphics: 92 -> 2 ms.
+- Canvas callbacks: 107 -> 5.5 ms.
+- Main Thread: 122 -> 34 ms.
+- Scroll frames: 13 -> 44.
+- Visual result is good in real gameplay, confirmed by the device tester.
+
+Canvas isolation, snapshot rendering and a broader transition redesign are not currently justified. Scope timings measure synchronous elapsed work, not GPU time or all deferred Unity work; nested timings must not be summed. Cleanup measures deactivation/destruction scheduling rather than all deferred destruction.
 
 Test devices should include at minimum:
 
 - Redmi 13 or equivalent lower-end Android.
+- A representative Android tablet (validation still required).
 - A representative iPhone.
 - A representative iPad when available.
 
@@ -200,9 +220,10 @@ Acceptance criteria:
   - Cleanup/GC
   - GPU/rendering
   - Development tooling overhead
-- Only then create an optimization task.
+- Preserve the accepted visuals, alignment, progression and exact Pixel Perfect restoration.
+- Validate the accepted solution on Android tablet, iPhone and iPad; compare equivalent Development/Release conditions and decoration-heavy transitions.
 
-Status: INSTRUMENTED / NEEDS DEVICE DATA
+Status: IMPROVED / NEEDS BROADER DEVICE TEST
 
 ### 6. Minimal persistence
 

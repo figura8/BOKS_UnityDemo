@@ -138,8 +138,9 @@ namespace BOKS.Tests
 
         IEnumerator WaitUntil(Func<bool> condition, string failureMessage)
         {
-            int frameLimit = 600;
-            while (frameLimit-- > 0)
+            // Real-time transitions must not time out early when rendering becomes faster.
+            double deadline = Time.realtimeSinceStartupAsDouble + 20.0;
+            while (Time.realtimeSinceStartupAsDouble < deadline)
             {
                 if (condition()) yield break;
                 yield return null;

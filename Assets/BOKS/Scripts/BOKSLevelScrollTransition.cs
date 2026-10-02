@@ -26,14 +26,46 @@ namespace BOKS.Demo
         const bool ShowLevelNumber = true;
 
         Coroutine activeTransition;
+        Canvas scrollCanvas;
+        bool previousPixelPerfect;
+        bool pixelPerfectCaptured;
 
         void Awake() => BOKSTransitionDiagnostics.Prepare();
 
         public void Play(BOKSCampaignView liveView, BOKSLevelDefinition nextLevel, Action handoff)
         {
             if (activeTransition != null) StopCoroutine(activeTransition);
+            RestorePixelPerfect();
             activeTransition = StartCoroutine(PlayRoutine(liveView, nextLevel, handoff));
         }
+
+        void DisablePixelPerfect(RectTransform presentation)
+        {
+            RestorePixelPerfect();
+            Canvas parentCanvas = presentation.GetComponentInParent<Canvas>();
+            if (parentCanvas == null) return;
+            scrollCanvas = parentCanvas.rootCanvas;
+            previousPixelPerfect = scrollCanvas.pixelPerfect;
+            pixelPerfectCaptured = true;
+            scrollCanvas.pixelPerfect = false;
+        }
+
+        void RestorePixelPerfect()
+        {
+            if (!pixelPerfectCaptured) return;
+            if (scrollCanvas != null) scrollCanvas.pixelPerfect = previousPixelPerfect;
+            pixelPerfectCaptured = false;
+            scrollCanvas = null;
+        }
+
+        void OnDisable()
+        {
+            if (activeTransition != null) StopCoroutine(activeTransition);
+            activeTransition = null;
+            RestorePixelPerfect();
+        }
+
+        void OnDestroy() => RestorePixelPerfect();
 
         IEnumerator PlayRoutine(BOKSCampaignView liveView, BOKSLevelDefinition nextLevel, Action handoff)
         {
@@ -65,6 +97,10 @@ namespace BOKS.Demo
             RectTransform levelLabel = ShowLevelNumber ? CreateGapLabel(liveStage.parent as RectTransform, home, viewportHeight, gapHeight, nextLevel.levelNumber) : null;
             // Briefly preserve the completed gameplay pose before visual ownership changes.
             yield return WaitUnscaled(CompletionPauseSeconds);
+            // Use the existing frame-end wait BEFORE querying the geometry. The normal Canvas
+            // update/render has now finished; no global forced rebuild is needed for GetWorldCorners.
+            // The rendered frame still contains only the original hero, as before.
+            yield return new WaitForEndOfFrame();
             Image originalHeroImage = liveGameplay.HeroArt;
             RectTransform transitionHero;
             Image proxyImage;
@@ -76,9 +112,6 @@ namespace BOKS.Demo
                 if (originalVisualGroup == null) originalVisualGroup = liveGameplay.HeroVisual.gameObject.AddComponent<CanvasGroup>();
             }
             float originalVisualAlpha = originalVisualGroup.alpha;
-            // The proxy is configured now but remains non-rendering for the current frame. This
-            // guarantees the current render contains only the original visual.
-            yield return new WaitForEndOfFrame();
             // No yield separates these writes: the next rendered frame contains only the proxy visual.
             proxyImage.enabled = true;
             originalVisualGroup.alpha = 0f;
@@ -89,26 +122,35 @@ namespace BOKS.Demo
                 directionTurn = CreateDirectionSpriteTurn(
                     transitionHero, proxyImage, preview.HeroArt.GetComponent<Image>(), liveGameplay.Facing, nextLevel.Direction);
 
-            for (float elapsed = 0f; elapsed < ScrollSeconds; elapsed += Time.unscaledDeltaTime)
+            try
             {
-                using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.ScrollStep))
+                DisablePixelPerfect(liveStage);
+                for (float elapsed = 0f; elapsed < ScrollSeconds; elapsed += Time.unscaledDeltaTime)
                 {
-                    float timelineProgress = Mathf.Clamp01(elapsed / ScrollSeconds);
-                    float t = EaseInOutCubic(timelineProgress);
-                    Vector2 offset = Vector2.up * (travel * t);
-                    liveStage.anchoredPosition = home + offset;
-                    previewStage.anchoredPosition = home + Vector2.down * travel + offset;
-                    if (levelLabel != null) levelLabel.anchoredPosition = home + Vector2.down * (viewportHeight + gapHeight * .5f) + offset;
-                    Vector2 target = ParentPoint(liveStage.parent as RectTransform, preview.HeroArt);
-                    transitionHero.anchoredPosition = QuadraticBezier(transitionHeroStart, transferControl, target, t) + Vector2.up * (Mathf.Sin(t * Mathf.PI) * HeroArcHeight);
-                    directionTurn.Update(timelineProgress);
+                    using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.ScrollStep))
+                    {
+                        float timelineProgress = Mathf.Clamp01(elapsed / ScrollSeconds);
+                        float t = EaseInOutCubic(timelineProgress);
+                        Vector2 offset = Vector2.up * (travel * t);
+                        liveStage.anchoredPosition = home + offset;
+                        previewStage.anchoredPosition = home + Vector2.down * travel + offset;
+                        if (levelLabel != null) levelLabel.anchoredPosition = home + Vector2.down * (viewportHeight + gapHeight * .5f) + offset;
+                        Vector2 target = ParentPoint(liveStage.parent as RectTransform, preview.HeroArt);
+                        transitionHero.anchoredPosition = QuadraticBezier(transitionHeroStart, transferControl, target, t) + Vector2.up * (Mathf.Sin(t * Mathf.PI) * HeroArcHeight);
+                        directionTurn.Update(timelineProgress);
+                    }
+                    yield return null;
                 }
-                yield return null;
-            }
 
-            liveStage.anchoredPosition = home + Vector2.up * travel;
-            previewStage.anchoredPosition = home;
-            transitionHero.anchoredPosition = ParentPoint(liveStage.parent as RectTransform, preview.HeroArt);
+                liveStage.anchoredPosition = home + Vector2.up * travel;
+                previewStage.anchoredPosition = home;
+                transitionHero.anchoredPosition = ParentPoint(liveStage.parent as RectTransform, preview.HeroArt);
+            }
+            finally
+            {
+                // Includes normal completion, iterator disposal and exceptions during scroll.
+                RestorePixelPerfect();
+            }
             using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.Cleanup))
             {
                 directionTurn.Complete();
@@ -283,7 +325,6 @@ namespace BOKS.Demo
 
         static RectTransform CreatePixelMatchedProxy(RectTransform layer, Image source, out Image image)
         {
-            Canvas.ForceUpdateCanvases();
             RectTransform sourceRect = source.rectTransform;
             Vector3[] worldCorners = new Vector3[4];
             sourceRect.GetWorldCorners(worldCorners);
