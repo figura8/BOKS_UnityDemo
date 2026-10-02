@@ -17,6 +17,7 @@ namespace BOKS.Demo
         RectTransform ghost;
         Vector2 pressPosition;
         bool dragging;
+        Color sourceColor;
 
         public bool IsPaletteSource => paletteSource;
         public int SlotIndex => slotIndex;
@@ -31,14 +32,36 @@ namespace BOKS.Demo
         }
 
         void Awake() => sourceImage = GetComponent<Image>();
+        void OnDisable() => CancelDrag();
+        void OnDestroy() => CancelDrag();
+
+        void CancelDrag()
+        {
+            if (controller != null && controller.OwnsCommandDrag(this)) controller.CancelCommandDrag();
+            else ClearDragVisuals();
+        }
+
+        internal void ClearDragVisuals()
+        {
+            if (dragging && sourceImage != null) sourceImage.color = sourceColor;
+            if (ghostLayer != null)
+            {
+                ghostLayer.SetActive(false);
+                Destroy(ghostLayer);
+            }
+            ghost = null;
+            ghostLayer = null;
+            dragging = false;
+        }
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            pressPosition = eventData.pressPosition;
-            dragging = controller.BeginCommandDrag(this);
-            if (!dragging) return;
-
             Canvas canvas = GetComponentInParent<Canvas>();
+            if (controller == null || canvas == null || sourceImage == null ||
+                !controller.BeginCommandDrag(this, eventData.pointerId)) return;
+            pressPosition = eventData.pressPosition;
+            sourceColor = sourceImage.color;
+            dragging = true;
             ghostLayer = new GameObject("Forward Drag Layer", typeof(RectTransform), typeof(Canvas), typeof(CanvasGroup));
             RectTransform layerRect = ghostLayer.GetComponent<RectTransform>();
             layerRect.SetParent(canvas.transform, false);
@@ -68,18 +91,13 @@ namespace BOKS.Demo
 
         public void OnDrag(PointerEventData eventData)
         {
-            if (dragging) MoveGhost(eventData);
+            if (dragging && controller != null && controller.OwnsCommandDrag(this, eventData.pointerId)) MoveGhost(eventData);
         }
 
         public void OnEndDrag(PointerEventData eventData)
         {
-            if (!dragging) return;
-            controller.CompleteCommandDrag(this, Vector2.Distance(pressPosition, eventData.position));
-            sourceImage.color = Color.white;
-            if (ghostLayer != null) Destroy(ghostLayer);
-            ghost = null;
-            ghostLayer = null;
-            dragging = false;
+            if (!dragging || controller == null || !controller.OwnsCommandDrag(this, eventData.pointerId)) return;
+            controller.CompleteCommandDrag(this, eventData.pointerId, Vector2.Distance(pressPosition, eventData.position));
         }
 
         void MoveGhost(PointerEventData eventData)

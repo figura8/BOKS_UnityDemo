@@ -119,7 +119,21 @@ Acceptance criteria:
 - Backgrounding during level execution or transition does not break progression.
 - Audio resumes in a predictable state.
 
-Status: TODO
+Phase 1A implementation (2026-10-02) — drag ownership and cancellation only:
+
+- One active drag is owned by its source and `pointerId`; another Begin is rejected without overwriting the source/ghost state. Non-owner drag, hover, drop and end events are ignored.
+- `CancelCommandDrag()` is idempotent: clears ownership, hover and destination, hides/destroys the ghost and restores the source colour. Cancellation does not move/delete commands or invoke drop completion.
+- Cancellation runs on application pause/focus loss, source or controller disable/destruction, level reset/reconfiguration, editor test restoration and immediately before an accepted Play starts execution.
+- Lifecycle callbacks live in the existing controller and only cancel drag. No global lifecycle framework, audio changes, transition changes or coroutine timing changes.
+- Ten new PlayMode cases passed: same-source/other-source second finger, wrong-pointer events, pause/focus cancellation, cancellation before Play, Reset, source disable/destruction and repeated cancellation/stale events.
+- Full PlayMode suite: 52/53 passed, including all new drag cases, existing single-pointer placement/move/swap/outside-drop/locked-slot tests, audio integration and campaign progression. The existing Level Editor test fails because `BOKS_LevelEditor` is not in the active build profile/shared scene list; build settings were not changed. No compilation errors.
+- Pause/focus tests invoke Unity callbacks in Editor; physical multi-touch, Home/app switching and screen-lock tests remain required on Android phone/tablet and iPhone/iPad.
+
+Phase 1A status: IMPLEMENTED / NEEDS DEVICE TEST.
+
+Phase 1B remains unimplemented: suspension/resume timing, execution/input gating beyond drag, completion/transition interruption guards, viewport changes during reveal/transition and predictable audio pause/resume. Existing behaviour is intentionally preserved for this step.
+
+Overall Task 3 status: IN PROGRESS (not DONE).
 
 ### 4. Iris shader inclusion
 

@@ -72,6 +72,7 @@ namespace BOKS.Demo
         bool succeeded;
         bool runResolved;
         BOKSCommandDragSource activeDrag;
+        int activeDragPointerId;
         int pendingDropSlot = -1;
         bool pendingDropLocked;
         int hoveredSlot = -1;
@@ -133,6 +134,7 @@ namespace BOKS.Demo
             Button[] buttons, Button play, GameObject[] commands, BOKSShapeGraphic[] wells, BOKSShapeGraphic[] dots,
             RectTransform runRoot, RectTransform shell, GameObject[] glows)
         {
+            CancelCommandDrag();
             levelDefinition = definition;
             hero = heroTransform;
             heroArt = heroArtImage;
@@ -263,6 +265,7 @@ namespace BOKS.Demo
 
         void OnDestroy()
         {
+            CancelCommandDrag();
             if (playButton != null) playButton.onClick.RemoveListener(Play);
         }
 
@@ -307,6 +310,7 @@ namespace BOKS.Demo
                 Debug.Log("[BOKS TEST] Run rejected: Main/Function program is empty");
                 return false;
             }
+            CancelCommandDrag();
             inputLocked = true;
             running = true;
             succeeded = false;
@@ -828,6 +832,7 @@ namespace BOKS.Demo
         /// <summary>Restore only transient runner state after an editor test; level geometry is untouched.</summary>
         public void RestoreEditorTestState(int column, int row, BOKSDirection direction, BOKSCommandType[] program)
         {
+            CancelCommandDrag();
             StopAllCoroutines();
             GoalPopVfx?.Reset();
             heroRebuke?.Cancel();
@@ -851,26 +856,46 @@ namespace BOKS.Demo
             ClearExecutionHighlights();
         }
 
-        public bool BeginCommandDrag(BOKSCommandDragSource source)
+        public bool OwnsCommandDrag(BOKSCommandDragSource source) => activeDrag != null && activeDrag == source;
+        public bool OwnsCommandDrag(BOKSCommandDragSource source, int pointerId) =>
+            OwnsCommandDrag(source) && activeDragPointerId == pointerId;
+
+        public void CancelCommandDrag()
         {
-            if (inputLocked) return false;
+            BOKSCommandDragSource source = activeDrag;
+            activeDrag = null;
+            activeDragPointerId = 0;
+            pendingDropSlot = -1;
+            pendingDropLocked = false;
+            ClearDropHover();
+            if (source != null) source.ClearDragVisuals();
+        }
+
+        void OnApplicationPause(bool paused) { if (paused) CancelCommandDrag(); }
+        void OnApplicationFocus(bool focused) { if (!focused) CancelCommandDrag(); }
+        void OnDisable() => CancelCommandDrag();
+
+        public bool BeginCommandDrag(BOKSCommandDragSource source, int pointerId)
+        {
+            if (inputLocked || activeDrag != null || source == null) return false;
             activeDrag = source;
+            activeDragPointerId = pointerId;
             pendingDropSlot = -1;
             pendingDropLocked = false;
             BOKSAudioManager.Play(BOKSAudioCue.BlockDetach);
             return true;
         }
 
-        public void RecordDropTarget(int slotIndex, bool enabled)
+        public void RecordDropTarget(int slotIndex, bool enabled, int pointerId)
         {
-            if (activeDrag == null) return;
+            if (activeDrag == null || activeDragPointerId != pointerId) return;
             pendingDropSlot = slotIndex;
             pendingDropLocked = !enabled;
         }
 
-        public void SetDropHover(int slotIndex, bool enabled, bool hovering, bool playHoverCue = true)
+        public void SetDropHover(int slotIndex, bool enabled, bool hovering, int pointerId, bool playHoverCue = true)
         {
-            if (activeDrag == null || !enabled || slotIndex < 0 || slotIndex >= enabledSlotWells.Length) return;
+            if (activeDrag == null || activeDragPointerId != pointerId || !enabled || slotIndex < 0 || slotIndex >= enabledSlotWells.Length) return;
             if (hovering)
             {
                 if (!activeDrag.IsPaletteSource && activeDrag.SlotIndex == slotIndex) return;
@@ -889,9 +914,9 @@ namespace BOKS.Demo
             }
         }
 
-        public void CompleteCommandDrag(BOKSCommandDragSource source, float dragDistance)
+        public void CompleteCommandDrag(BOKSCommandDragSource source, int pointerId, float dragDistance)
         {
-            if (source != activeDrag) return;
+            if (!OwnsCommandDrag(source, pointerId)) return;
 
             bool didDropSuccessfully = false;
             if (dragDistance >= 20f)
@@ -916,20 +941,20 @@ namespace BOKS.Demo
 
             if (didDropSuccessfully) BOKSAudioManager.Play(BOKSAudioCue.BlockDropSuccess);
 
-            ClearDropHover();
-            activeDrag = null;
-            pendingDropSlot = -1;
-            pendingDropLocked = false;
+            CancelCommandDrag();
         }
 
         void ClearDropHover()
         {
-            if (hoveredSlot >= 0 && hoveredSlot < enabledSlotWells.Length)
+            if (enabledSlotWells != null && hoveredSlot >= 0 && hoveredSlot < enabledSlotWells.Length)
             {
                 BOKSShapeGraphic well = enabledSlotWells[hoveredSlot];
-                well.borderColor = new Color32(188, 153, 107, 255);
-                well.borderWidth = 1f;
-                well.SetVerticesDirty();
+                if (well != null)
+                {
+                    well.borderColor = new Color32(188, 153, 107, 255);
+                    well.borderWidth = 1f;
+                    well.SetVerticesDirty();
+                }
             }
             hoveredSlot = -1;
         }
@@ -987,6 +1012,7 @@ namespace BOKS.Demo
 
         public void RestartLevel2()
         {
+            CancelCommandDrag();
             StopAllCoroutines();
             GoalPopVfx?.Reset();
             heroRebuke?.Cancel();
