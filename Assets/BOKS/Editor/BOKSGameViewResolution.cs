@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using BOKS.Demo;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -13,6 +14,7 @@ namespace BOKS.Editor
     {
         static readonly Resolution Portrait = new Resolution("BOKS Portrait 720x1600", 720, 1600);
         static readonly Resolution Landscape = new Resolution("BOKS Level Editor 1600x900", 1600, 900);
+        static readonly Resolution Tablet = new Resolution("BOKS Layout Test 1280x800", 1280, 800);
 
         struct Resolution
         {
@@ -39,7 +41,17 @@ namespace BOKS.Editor
                 Select(Landscape);
                 PrepareLevelEditorSceneView();
             }
-            else if (scene.name == "BOKS_MainMenu" || scene.name == "BOKS_Campaign") Select(Portrait);
+            else if (scene.name == "BOKS_MainMenu" || scene.name == "BOKS_Campaign") ApplyLayoutTestShape();
+        }
+
+        internal static void ApplyLayoutTestShape()
+        {
+            // Auto intentionally preserves the user's Game View, including landscape/custom sizes.
+            switch (BOKSDeviceLayout.LayoutTestOverride)
+            {
+                case BOKSDeviceLayout.TestOverride.ForcePhonePortrait: Select(Portrait); break;
+                case BOKSDeviceLayout.TestOverride.ForceTabletLandscape: Select(Tablet); break;
+            }
         }
 
         static void PrepareLevelEditorSceneView()
@@ -67,9 +79,11 @@ namespace BOKS.Editor
 
             object sizes = GetGameViewSizesInstance(sizesType);
             if (sizes == null) return;
-            object standalone = Enum.Parse(groupType, "Standalone");
+            object activeGroup = sizesType.GetProperty("currentGroupType", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                ?.GetValue(sizes);
+            if (activeGroup == null) return;
             object group = sizesType.GetMethod("GetGroup", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                ?.Invoke(sizes, new[] { standalone });
+                ?.Invoke(sizes, new[] { activeGroup });
             if (group == null) return;
 
             MethodInfo countMethod = group.GetType().GetMethod("GetTotalCount", BindingFlags.Public | BindingFlags.Instance);
@@ -88,7 +102,7 @@ namespace BOKS.Editor
             if (index < 0) return;
 
             EditorWindow gameView = EditorWindow.GetWindow(gameViewType);
-            gameViewType.GetMethod("SizeSelectionCallback", BindingFlags.NonPublic | BindingFlags.Instance)
+            gameViewType.GetMethod("SizeSelectionCallback", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 ?.Invoke(gameView, new object[] { index, null });
         }
 

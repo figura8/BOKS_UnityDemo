@@ -136,7 +136,7 @@ namespace BOKS.Demo
         {
             if (originalGoalPrefab != null)
             {
-                tabletLayout = BOKSDeviceLayout.CurrentMode == BOKSDeviceLayoutMode.TabletLandscape;
+                tabletLayout = BOKSDeviceLayout.CurrentComposition == BOKSLayoutComposition.Landscape;
                 var productionCanvas = new GameObject("Production Main Menu", typeof(RectTransform));
                 productionCanvas.transform.SetParent(transform, false);
                 var presentation = productionCanvas.AddComponent<BOKSProductionMenuPresentation>();
@@ -615,7 +615,7 @@ namespace BOKS.Demo
 
         void BuildBubble3DMenu()
         {
-            tabletLayout = BOKSDeviceLayout.CurrentMode == BOKSDeviceLayoutMode.TabletLandscape;
+            tabletLayout = BOKSDeviceLayout.CurrentComposition == BOKSLayoutComposition.Landscape;
             var canvasGo = new GameObject("BOKS Logo and Bubble Menu", typeof(RectTransform), typeof(Canvas),
                 typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
             canvasGo.transform.SetParent(transform, false);

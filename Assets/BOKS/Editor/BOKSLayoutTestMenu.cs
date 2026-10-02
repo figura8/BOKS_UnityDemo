@@ -10,9 +10,12 @@ namespace BOKS.Editor
         const string AutoPath = "BÖKS/Layout Test/Auto";
         const string PortraitPath = "BÖKS/Layout Test/Force Phone Portrait";
         const string LandscapePath = "BÖKS/Layout Test/Force Tablet Landscape";
+        const string SessionKey = "BOKS.LayoutTestOverride";
 
         static BOKSLayoutTestMenu()
         {
+            // Preserve an explicit test selection across the Play Mode domain reload.
+            BOKSDeviceLayout.SetLayoutTestOverride((BOKSDeviceLayout.TestOverride)SessionState.GetInt(SessionKey, 0));
             EditorApplication.delayCall += UpdateChecks;
             EditorApplication.playModeStateChanged += _ => UpdateChecks();
         }
@@ -28,8 +31,9 @@ namespace BOKS.Editor
 
         static void Select(BOKSDeviceLayout.TestOverride value)
         {
-            // This API already refreshes all existing campaign responsive layouts.
+            SessionState.SetInt(SessionKey, (int)value);
             BOKSDeviceLayout.SetLayoutTestOverride(value);
+            BOKSGameViewResolution.ApplyLayoutTestShape();
             UpdateChecks();
             EditorApplication.QueuePlayerLoopUpdate();
             SceneView.RepaintAll();

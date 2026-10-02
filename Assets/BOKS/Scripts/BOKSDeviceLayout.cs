@@ -11,18 +11,36 @@ namespace BOKS.Demo
         TabletLandscape
     }
 
-    /// <summary>One device-based decision point for mobile orientation and presentation.</summary>
+    public enum BOKSDeviceClass { Phone, Tablet }
+    public enum BOKSLayoutComposition { Portrait, Landscape }
+    public enum BOKSViewportOrientation { Portrait, Landscape, Square }
+    public enum BOKSOrientationPreference { UprightPortrait, LandscapeEither }
+
+    /// <summary>Product orientation policy is separate from the actual viewport and UI composition.</summary>
     public static class BOKSDeviceLayout
     {
         const float MinimumTabletDiagonalInches = 7f;
-        const float MinimumTabletSmallestWidthDp = 600f;
+        public const int MinimumTabletSmallestWidthDp = 600;
+        // The only composition breakpoint. Tune after physical-device testing.
+        public const double LandscapeCompositionAspectThreshold = 1.20;
         const int MinimumTabletSmallestPixelsFallback = 1200;
         const int MinimumTabletLargestPixelsFallback = 1920;
 
-        public static BOKSDeviceLayoutMode CurrentMode { get; private set; } = BOKSDeviceLayoutMode.PhonePortrait;
+        static bool policyApplied;
+        public static BOKSDeviceClass DeviceClass { get; private set; } = BOKSDeviceClass.Phone;
+        public static BOKSOrientationPreference OrientationPreference { get; private set; }
+        public static ScreenOrientation RequestedOrientation { get; private set; } = ScreenOrientation.Portrait;
+        public static Vector2 ActualViewport => new Vector2(Screen.width, Screen.height);
+        public static BOKSViewportOrientation ActualViewportOrientation => Screen.width == Screen.height
+            ? BOKSViewportOrientation.Square : Screen.width > Screen.height
+                ? BOKSViewportOrientation.Landscape : BOKSViewportOrientation.Portrait;
+        public static BOKSLayoutComposition CurrentComposition => SelectComposition(Screen.safeArea);
+        // Compatibility for older experimental menu code: these names now describe composition only.
+        public static BOKSDeviceLayoutMode CurrentMode => CurrentComposition == BOKSLayoutComposition.Landscape
+            ? BOKSDeviceLayoutMode.TabletLandscape : BOKSDeviceLayoutMode.PhonePortrait;
         public static float EstimatedDiagonalInches { get; private set; } = -1f;
 
-#if UNITY_EDITOR || DEBUG
+#if UNITY_EDITOR || DEBUG || DEVELOPMENT_BUILD
         public enum TestOverride
         {
             Auto,
@@ -39,43 +57,63 @@ namespace BOKS.Demo
         }
 #endif
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetPolicy() => policyApplied = false;
+
+        // Earliest managed startup hook; this cannot govern the preceding Android OS launch screen.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
+        static void ApplyStartupPolicy() => DetectAndApply();
+
+        public static BOKSLayoutComposition SelectComposition(Rect safeArea)
+        {
+#if UNITY_EDITOR || DEBUG || DEVELOPMENT_BUILD
+            if (LayoutTestOverride == TestOverride.ForcePhonePortrait) return BOKSLayoutComposition.Portrait;
+            if (LayoutTestOverride == TestOverride.ForceTabletLandscape) return BOKSLayoutComposition.Landscape;
+#endif
+            if (safeArea.width <= 0f || safeArea.height <= 0f) return BOKSLayoutComposition.Portrait;
+            return (double)safeArea.width / safeArea.height >= LandscapeCompositionAspectThreshold
+                ? BOKSLayoutComposition.Landscape : BOKSLayoutComposition.Portrait;
+        }
+
+        public static BOKSOrientationPreference PreferenceFor(BOKSDeviceClass deviceClass) =>
+            deviceClass == BOKSDeviceClass.Tablet
+                ? BOKSOrientationPreference.LandscapeEither : BOKSOrientationPreference.UprightPortrait;
+
         public static BOKSDeviceLayoutMode DetectAndApply()
         {
-            CurrentMode = Classify(Application.platform, SystemInfo.deviceModel, Screen.width, Screen.height, Screen.dpi,
-                out float diagonalInches, out float smallestWidthDp);
+            // Scene/layout refreshes never fight a viewport imposed by the OS.
+            if (policyApplied) return CurrentMode;
+            int androidWidthDp = AndroidSmallestWidthDp();
+            if (Application.platform == RuntimePlatform.Android && androidWidthDp <= 0 &&
+                (Screen.width <= 0 || Screen.height <= 0)) return CurrentMode;
+            if (Application.platform == RuntimePlatform.IPhonePlayer && string.IsNullOrEmpty(SystemInfo.deviceModel))
+                return CurrentMode; // Retry at the existing first-scene entry if native data is not ready.
+            policyApplied = true;
+            DeviceClass = ClassifyDevice(Application.platform, SystemInfo.deviceModel, Screen.width, Screen.height, Screen.dpi,
+                out float diagonalInches, out float smallestWidthDp, androidWidthDp);
             EstimatedDiagonalInches = diagonalInches;
-
-#if UNITY_EDITOR || DEBUG
-            if (LayoutTestOverride == TestOverride.ForcePhonePortrait)
+            OrientationPreference = PreferenceFor(DeviceClass);
+            bool landscape = OrientationPreference == BOKSOrientationPreference.LandscapeEither;
+            RequestedOrientation = landscape ? ScreenOrientation.AutoRotation : ScreenOrientation.Portrait;
+            if (Application.isMobilePlatform)
             {
-                CurrentMode = BOKSDeviceLayoutMode.PhonePortrait;
-                Debug.Log("[BOKS DEVICE] Forced PhonePortrait");
+                Screen.autorotateToPortrait = !landscape;
+                Screen.autorotateToPortraitUpsideDown = false;
+                Screen.autorotateToLandscapeLeft = landscape;
+                Screen.autorotateToLandscapeRight = landscape;
+                Screen.orientation = RequestedOrientation;
             }
-            else if (LayoutTestOverride == TestOverride.ForceTabletLandscape)
-            {
-                CurrentMode = BOKSDeviceLayoutMode.TabletLandscape;
-                Debug.Log("[BOKS DEVICE] Forced TabletLandscape");
-            }
-#endif
 
-            Screen.autorotateToPortrait = CurrentMode == BOKSDeviceLayoutMode.PhonePortrait;
-            Screen.autorotateToPortraitUpsideDown = false;
-            Screen.autorotateToLandscapeLeft = CurrentMode == BOKSDeviceLayoutMode.TabletLandscape;
-            Screen.autorotateToLandscapeRight = CurrentMode == BOKSDeviceLayoutMode.TabletLandscape;
-            Screen.orientation = CurrentMode == BOKSDeviceLayoutMode.PhonePortrait
-                ? ScreenOrientation.Portrait
-                : ScreenOrientation.AutoRotation;
-
-#if UNITY_EDITOR || DEBUG
+#if UNITY_EDITOR || DEBUG || DEVELOPMENT_BUILD
             string diagonal = diagonalInches > 0f ? diagonalInches.ToString("0.00") + "in" : "unavailable";
             string smallestDp = smallestWidthDp > 0f ? smallestWidthDp.ToString("0") + "dp" : "unavailable";
-            Debug.Log($"[BOKS DEVICE] {CurrentMode} resolution={Screen.width}x{Screen.height} dpi={Screen.dpi:0.##} diagonal={diagonal} smallestWidth={smallestDp} model={SystemInfo.deviceModel}");
+            Debug.Log($"[BOKS DEVICE] class={DeviceClass} preference={OrientationPreference} composition={CurrentComposition} resolution={Screen.width}x{Screen.height} dpi={Screen.dpi:0.##} diagonal={diagonal} smallestWidth={smallestDp} model={SystemInfo.deviceModel}");
 #endif
             return CurrentMode;
         }
 
-        public static BOKSDeviceLayoutMode Classify(RuntimePlatform platform, string model, int width, int height, float dpi,
-            out float diagonalInches, out float smallestWidthDp)
+        public static BOKSDeviceClass ClassifyDevice(RuntimePlatform platform, string model, int width, int height, float dpi,
+            out float diagonalInches, out float smallestWidthDp, int androidSmallestWidthDp = -1)
         {
             diagonalInches = -1f;
             smallestWidthDp = -1f;
@@ -85,12 +123,19 @@ namespace BOKS.Demo
             {
                 // Unity exposes the hardware family in deviceModel (for example "iPad14,5").
                 return deviceModel.StartsWith("iPad", StringComparison.OrdinalIgnoreCase)
-                    ? BOKSDeviceLayoutMode.TabletLandscape
-                    : BOKSDeviceLayoutMode.PhonePortrait;
+                    ? BOKSDeviceClass.Tablet
+                    : BOKSDeviceClass.Phone;
             }
 
             if (platform != RuntimePlatform.Android)
-                return BOKSDeviceLayoutMode.PhonePortrait;
+                return BOKSDeviceClass.Phone;
+
+            // OS logical width takes precedence over unreliable physical DPI reporting.
+            if (androidSmallestWidthDp > 0)
+            {
+                smallestWidthDp = androidSmallestWidthDp;
+                return androidSmallestWidthDp >= MinimumTabletSmallestWidthDp ? BOKSDeviceClass.Tablet : BOKSDeviceClass.Phone;
+            }
 
             int smallestPixels = Mathf.Min(width, height);
             int largestPixels = Mathf.Max(width, height);
@@ -104,7 +149,28 @@ namespace BOKS.Demo
             bool tablet = diagonalInches >= MinimumTabletDiagonalInches ||
                 smallestWidthDp >= MinimumTabletSmallestWidthDp ||
                 (!reliableDpi && smallestPixels >= MinimumTabletSmallestPixelsFallback && largestPixels >= MinimumTabletLargestPixelsFallback);
-            return tablet ? BOKSDeviceLayoutMode.TabletLandscape : BOKSDeviceLayoutMode.PhonePortrait;
+            return tablet ? BOKSDeviceClass.Tablet : BOKSDeviceClass.Phone;
+        }
+
+        static int AndroidSmallestWidthDp()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                using (var player = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+                using (var activity = player.GetStatic<AndroidJavaObject>("currentActivity"))
+                using (var resources = activity.Call<AndroidJavaObject>("getResources"))
+                using (var configuration = resources.Call<AndroidJavaObject>("getConfiguration"))
+                    return configuration.Get<int>("smallestScreenWidthDp");
+            }
+            catch (Exception exception)
+            {
+#if DEBUG || DEVELOPMENT_BUILD
+                Debug.LogWarning("[BOKS DEVICE] Android configuration unavailable; using DPI fallback: " + exception.Message);
+#endif
+            }
+#endif
+            return -1;
         }
     }
 
@@ -167,7 +233,7 @@ namespace BOKS.Demo
 
         void Start() => ApplyLayout(true);
 
-        void Update()
+        void LateUpdate()
         {
             if (lastScreenSize.x != Screen.width || lastScreenSize.y != Screen.height || lastSafeArea != Screen.safeArea)
                 ApplyLayout(false);
@@ -177,7 +243,7 @@ namespace BOKS.Demo
         {
             if (presentation == null) return;
             if (refreshDeviceMode) BOKSDeviceLayout.DetectAndApply();
-            bool tablet = BOKSDeviceLayout.CurrentMode == BOKSDeviceLayoutMode.TabletLandscape;
+            bool tablet = BOKSDeviceLayout.CurrentComposition == BOKSLayoutComposition.Landscape;
             if (scaler != null) scaler.referenceResolution = tablet ? TabletReference : PortraitReference;
 
             RestorePortraitTargets();
@@ -205,6 +271,20 @@ namespace BOKS.Demo
         {
             if (canvas == null || presentation == null) return;
             float scale = Mathf.Max(.0001f, canvas.scaleFactor);
+            if (scaler != null && scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize)
+            {
+                // Match CanvasScaler immediately, including Awake before its next Update.
+                float widthScale = Screen.width / reference.x;
+                float heightScale = Screen.height / reference.y;
+                switch (scaler.screenMatchMode)
+                {
+                    case CanvasScaler.ScreenMatchMode.Expand: scale = Mathf.Min(widthScale, heightScale); break;
+                    case CanvasScaler.ScreenMatchMode.Shrink: scale = Mathf.Max(widthScale, heightScale); break;
+                    default: scale = Mathf.Pow(widthScale, 1f - scaler.matchWidthOrHeight) * Mathf.Pow(heightScale, scaler.matchWidthOrHeight); break;
+                }
+                scale = Mathf.Max(.0001f, scale);
+                canvas.scaleFactor = scale; // Avoid a stale scaler factor in the frame of a viewport/layout change.
+            }
             Rect safe = Screen.safeArea;
             Vector2 safeSize = new Vector2(safe.width / scale, safe.height / scale);
             Vector2 safeCenter = new Vector2(

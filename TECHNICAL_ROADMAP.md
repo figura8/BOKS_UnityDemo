@@ -22,7 +22,7 @@ Audit findings describe the inspected implementation, not confirmed failures on 
 
 ### 1. Orientation and responsive layout
 
-Current problems:
+Original audit findings (layout separation implemented; Android native-startup decision and physical-device validation remain open):
 
 - PlayerSettings, runtime and Android manifest orientation policy is inconsistent.
 - The current default orientation is `PortraitUpsideDown`.
@@ -47,7 +47,38 @@ Acceptance criteria:
 - Orientation does not visibly correct itself after startup.
 - Manual layout-test overrides continue working.
 
-Status: TODO
+Implementation (2026-10-02):
+
+- Separate device class, product orientation preference/request, actual viewport and UI composition.
+- Phones request upright portrait; tablets request either landscape direction. Never request portrait upside-down.
+- Apply the runtime preference once at Unity's earliest managed `BeforeSplashScreen` hook (retry at the existing first-scene entry only if native device data is not ready); scene/layout refreshes do not re-request orientation when the OS supplies a different viewport.
+- Select the existing landscape composition when safe-area width / height >= 1.20; otherwise select the existing portrait composition. The single tunable breakpoint is `BOKSDeviceLayout.LandscapeCompositionAspectThreshold`.
+- Preserve Campaign safe-area centring/uniform fitting and both authored compositions; use the current scaler reference immediately when fitting.
+- Production Main Menu already has safe-area fitting from the preceding menu task and keeps its single logo/flower-bubble composition.
+- Android generated manifest uses neutral `screenOrientation="unspecified"` rather than a universal portrait lock. Runtime classification first reads Android `smallestScreenWidthDp` (tablet >= 600 dp); DPI/pixel heuristics are fallback only. No custom Activity/native plugin.
+- Investigated a qualified manifest integer (default portrait=1, sw600dp sensorLandscape=6): AAPT2 and a full Android build accept it, but this does not prove startup selection. AOSP PackageManager parses `screenOrientation` into a fixed ActivityInfo value using default resources, so sw600dp cannot be relied on for per-device native launch. The prototype was removed from production code; it remains only in ignored validation artifacts.
+- Android OS launch-screen orientation before Unity initialization cannot be guaranteed by the managed hook. Closing the no-visible-correction requirement needs an approved startup decision; no native complexity was introduced.
+- iOS build-time postprocessor writes portrait-only iPhone declarations and both landscape directions for iPad, preserving unrelated plist keys and removing legacy initial-orientation overrides.
+- Unity Default Orientation is Auto Rotation with portrait and both landscape directions enabled, upside-down disabled; native build declarations narrow the policy per device.
+- All three Layout Test states remain available and checked. Forced selections also choose coherent Game View dimensions; Auto preserves the selected viewport. Test selection survives Play Mode domain reload.
+
+Validation:
+
+- 13 automated policy tests passed (including the exact 1.20 boundary, Android 599/600 dp, iPhone/iPad classification and override independence).
+- Campaign portrait 720x1600 and landscape 1280x800 inspected in Play Mode; live switching updates composition and safe-area fitting without restart. Auto landscape survives re-entering Play Mode.
+- Android resource/manifest prototype compiled and linked with SDK AAPT2; packaged values default=1 and sw600dp=6 verified. Native parsing investigation rejected it as a reliable production solution.
+- Final Android Development APK built successfully, without build errors, at `Builds/BOKSOrientationValidation/BOKS-Orientation.apk` (ignored artifact). AAPT2 inspection confirms packaged `screenOrientation=-1` (unspecified) and no rejected prototype resource. Existing build/tooling warnings were not fixed as part of this task.
+- iOS plist fixture verified, including idempotence and preservation of unrelated keys. A real Xcode export is not available on this machine (iOS module absent).
+
+Remaining acceptance work:
+
+- Cold launch/splash-to-menu with no visible orientation correction on Android phone/tablet and iPhone/iPad.
+- Resolve the Android OS-launch-screen requirement: the neutral manifest plus managed preference cannot guarantee device-specific orientation before Unity starts. Any native-entry-point work or acceptance of an initial correction needs a separate approved decision. AOSP evidence: [manifest parsing](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android10-release/core/java/android/content/pm/PackageParser.java) resolves `screenOrientation` to ActivityInfo with default resource configuration, not launch-time sw600dp selection.
+- Physically verify no upside-down startup, both tablet landscape directions, OS-imposed viewport fallback, safe-area insets, unusual aspect ratios and background/resume.
+- Inspect a real exported iOS plist/Xcode build and test iPhone/iPad; assess the breakpoint after device testing.
+- Build-time declarations and Editor checks do not prove native startup/rotation behaviour.
+
+Status: NEEDS DEVICE TEST (layout/policy implementation complete; Android native-startup decision required; not DONE)
 
 ### 2. Main Menu safe area
 
