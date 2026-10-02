@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7109684152238961843
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7634781215017306854}
+  - component: {fileID: 5013467972495693411}
+  - component: {fileID: 3590359486611358088}
+  m_Layer: 0
+  m_Name: BOKSMenuBubbleExperiment
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7634781215017306854
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7109684152238961843}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5013467972495693411
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7109684152238961843}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f6c4b7a2d8e4f1b9a5c6d7e8f901234, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  logoSprite: {fileID: 7465518780093689404, guid: dd592c4e65f3e204d914a840e15ef616, type: 3}
+  bubble3DVisual: {fileID: 3590359486611358088}
+  characterGreenDown: {fileID: 21300000, guid: 1f4f42528d3f9924da2c503baa120460, type: 3}
+  characterRedRight: {fileID: 21300000, guid: 64a998cdd360ce9469e7c095d774ae5d, type: 3}
+  characterYellowLeft: {fileID: 21300000, guid: 4ef06630c5cb7cd429cbf38adedaaedf, type: 3}
+  characterBlueUp: {fileID: 21300000, guid: 4b8507dc046af3e43a253d14ac85e985, type: 3}
+--- !u!114 &3590359486611358088
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7109684152238961843}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b98c16d1a7444027b89528a81a6dd3ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  savedSettings: {fileID: 4900000, guid: f4e6cf8467c14e7590030534682e8c73, type: 3}
+  forwardIcon: {fileID: 21300000, guid: 0e438f3c74196a746ab9c1f243a54813, type: 3}
+  membraneShader: {fileID: 4800000, guid: 52079d466261aab4d87c0b5d155f81a9, type: 3}
+  popShader: {fileID: 4800000, guid: 1c6ed972d22c39442a89b098180df39f, type: 3}

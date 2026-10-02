@@ -44,6 +44,8 @@ namespace BOKS.Demo
         static bool ShowFinalLayoutOnly = false;
         static bool LogIntroLayout = false;
         [SerializeField] Sprite logoSprite;
+        [Header("Production menu")]
+        [SerializeField] GameObject originalGoalPrefab;
         [SerializeField] MonoBehaviour bubble3DVisual;
         IBOKSMenuBubble MenuBubble => bubble3DVisual as IBOKSMenuBubble;
         [Header("Intro composition")]
@@ -126,11 +128,25 @@ namespace BOKS.Demo
         void Start()
         {
             BOKSAudioManager.Instance.StartMenuMusic();
+            if (originalGoalPrefab != null) return;
             StartCoroutine(PlayMenuIntro());
         }
 
         void Build()
         {
+            if (originalGoalPrefab != null)
+            {
+                tabletLayout = BOKSDeviceLayout.CurrentMode == BOKSDeviceLayoutMode.TabletLandscape;
+                var productionCanvas = new GameObject("Production Main Menu", typeof(RectTransform));
+                productionCanvas.transform.SetParent(transform, false);
+                var presentation = productionCanvas.AddComponent<BOKSProductionMenuPresentation>();
+                presentation.Build(originalGoalPrefab, logoSprite, out menuGroup, out startButton);
+                menuRoot = (RectTransform)productionCanvas.transform;
+                startButton.onClick.AddListener(StartCampaign);
+                if (FindAnyObjectByType<EventSystem>() == null)
+                    new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
+                return;
+            }
             if (MenuBubble != null) { BuildBubble3DMenu(); return; }
             tabletLayout = BOKSDeviceLayout.CurrentMode == BOKSDeviceLayoutMode.TabletLandscape;
             Vector2 reference = tabletLayout ? new Vector2(1280f, 800f) : new Vector2(520f, 1000f);
@@ -366,12 +382,13 @@ namespace BOKS.Demo
             startButton.interactable = false;
             isPopping = true;
             BOKSAudioManager.Play(BOKSAudioCue.Welcome);
-            BOKSAudioManager.Play(BOKSAudioCue.BubblePop);
+            if (originalGoalPrefab == null) BOKSAudioManager.Play(BOKSAudioCue.BubblePop);
             StartCoroutine(OpenCampaign());
         }
 
         void Update()
         {
+            if (originalGoalPrefab != null) return;
             if (MenuBubble != null) return;
             if (isPopping) return;
             float drift = Mathf.Repeat(Time.unscaledTime / 5.2f, 1f);
@@ -392,6 +409,12 @@ namespace BOKS.Demo
 
         IEnumerator OpenCampaign()
         {
+            if (originalGoalPrefab != null)
+            {
+                DontDestroyOnLoad(gameObject);
+                yield return OpenCampaignBehindGate();
+                yield break;
+            }
             if (MenuBubble != null)
             {
                 yield return MenuBubble.Pop();

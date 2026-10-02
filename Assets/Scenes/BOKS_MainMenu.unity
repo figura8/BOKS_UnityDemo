@@ -172,7 +172,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1001}
   - component: {fileID: 1002}
-  - component: {fileID: 991827364}
   m_Layer: 0
   m_Name: BOKS Main Menu
   m_TagString: Untagged
@@ -208,24 +207,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   logoSprite: {fileID: 7465518780093689404, guid: dd592c4e65f3e204d914a840e15ef616, type: 3}
-  bubble3DVisual: {fileID: 991827364}
-  characterGreenDown: {fileID: 21300000, guid: 1f4f42528d3f9924da2c503baa120460, type: 3}
-  characterRedRight: {fileID: 21300000, guid: 64a998cdd360ce9469e7c095d774ae5d, type: 3}
-  characterYellowLeft: {fileID: 21300000, guid: 4ef06630c5cb7cd429cbf38adedaaedf, type: 3}
-  characterBlueUp: {fileID: 21300000, guid: 4b8507dc046af3e43a253d14ac85e985, type: 3}
---- !u!114 &991827364
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1000}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b98c16d1a7444027b89528a81a6dd3ed, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  savedSettings: {fileID: 4900000, guid: f4e6cf8467c14e7590030534682e8c73, type: 3}
-  forwardIcon: {fileID: 21300000, guid: 0e438f3c74196a746ab9c1f243a54813, type: 3}
-  membraneShader: {fileID: 4800000, guid: 52079d466261aab4d87c0b5d155f81a9, type: 3}
-  popShader: {fileID: 4800000, guid: 1c6ed972d22c39442a89b098180df39f, type: 3}
+  originalGoalPrefab: {fileID: 7635108737277152738, guid: 650d515a4b99ada4aaa4a597d744d6b1, type: 3}
+  bubble3DVisual: {fileID: 0}
