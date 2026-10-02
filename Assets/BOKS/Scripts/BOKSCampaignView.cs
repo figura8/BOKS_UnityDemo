@@ -81,7 +81,9 @@ namespace BOKS.Demo
             // An inactive parent prevents the clone's Awake from ever running before its gameplay
             // scripts are removed. This is what prevents the Level 1 spawn visual from flashing.
             stageObject.SetActive(false);
-            GameObject previewObject = Instantiate(source, stage, false);
+            GameObject previewObject;
+            using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.Clone))
+                previewObject = Instantiate(source, stage, false);
             RectTransform previewRect = previewObject.transform as RectTransform;
             previewRect.anchoredPosition = Vector2.zero;
 
@@ -102,7 +104,8 @@ namespace BOKS.Demo
 
             // ApplyLevel is safe to call while the copy is inactive: it only constructs and lays
             // out UI from the existing data-driven definition. No cloned controller is enabled.
-            preview.ApplyLevel(level);
+            using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.PreviewApply))
+                preview.ApplyLevel(level);
             // The source goal's old UI art is inactive while the visual test is enabled. Give the
             // inert transition preview its matching mesh before its CampaignView is removed.
             preview.EnsureGoalBubbleVisualTest();
@@ -122,7 +125,8 @@ namespace BOKS.Demo
             if (previewGameplay != null) DestroyImmediate(previewGameplay);
             if (previewOnboarding != null) DestroyImmediate(previewOnboarding);
             if (preview != null) DestroyImmediate(preview);
-            stageObject.SetActive(true);
+            using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.PreviewActivate))
+                stageObject.SetActive(true);
             return new VisualTransitionPreview(stage, previewHero, previewHeroVisual, previewHeroArt);
         }
 

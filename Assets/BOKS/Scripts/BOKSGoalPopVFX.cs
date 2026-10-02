@@ -38,7 +38,8 @@ namespace BOKS.Demo
 
         public void Play(Vector2 centre)
         {
-            EnsureAssets();
+            using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.GoalPopEnsureAssets))
+                EnsureAssets();
             StopAllCoroutines();
             DeactivateAll();
             if (bubbleFade != null) bubbleFade.alpha = 0f;

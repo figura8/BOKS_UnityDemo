@@ -27,6 +27,8 @@ namespace BOKS.Demo
 
         Coroutine activeTransition;
 
+        void Awake() => BOKSTransitionDiagnostics.Prepare();
+
         public void Play(BOKSCampaignView liveView, BOKSLevelDefinition nextLevel, Action handoff)
         {
             if (activeTransition != null) StopCoroutine(activeTransition);
@@ -43,12 +45,14 @@ namespace BOKS.Demo
 
             RectTransform liveStage = liveView.transform as RectTransform;
             BOKSLevel2Controller liveGameplay = liveView.Gameplay;
+            BOKSTransitionDiagnostics.Begin(nextLevel.levelNumber - 1, nextLevel.levelNumber);
             BOKSCampaignView.VisualTransitionPreview preview = liveView.CreateVisualTransitionPreview(nextLevel);
             RectTransform previewStage = preview != null ? preview.Stage : null;
             if (liveStage == null || previewStage == null || preview.HeroArt == null || liveGameplay == null || liveGameplay.HeroArt == null)
             {
                 if (previewStage != null) Destroy(previewStage.gameObject);
                 handoff?.Invoke();
+                BOKSTransitionDiagnostics.Finish();
                 yield break;
             }
 
@@ -62,9 +66,15 @@ namespace BOKS.Demo
             // Briefly preserve the completed gameplay pose before visual ownership changes.
             yield return WaitUnscaled(CompletionPauseSeconds);
             Image originalHeroImage = liveGameplay.HeroArt;
-            RectTransform transitionHero = CreatePixelMatchedProxy(liveStage.parent as RectTransform, originalHeroImage, out Image proxyImage);
-            CanvasGroup originalVisualGroup = liveGameplay.HeroVisual.GetComponent<CanvasGroup>();
-            if (originalVisualGroup == null) originalVisualGroup = liveGameplay.HeroVisual.gameObject.AddComponent<CanvasGroup>();
+            RectTransform transitionHero;
+            Image proxyImage;
+            CanvasGroup originalVisualGroup;
+            using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.ProxySetup))
+            {
+                transitionHero = CreatePixelMatchedProxy(liveStage.parent as RectTransform, originalHeroImage, out proxyImage);
+                originalVisualGroup = liveGameplay.HeroVisual.GetComponent<CanvasGroup>();
+                if (originalVisualGroup == null) originalVisualGroup = liveGameplay.HeroVisual.gameObject.AddComponent<CanvasGroup>();
+            }
             float originalVisualAlpha = originalVisualGroup.alpha;
             // The proxy is configured now but remains non-rendering for the current frame. This
             // guarantees the current render contains only the original visual.
@@ -74,39 +84,53 @@ namespace BOKS.Demo
             originalVisualGroup.alpha = 0f;
             Vector2 transitionHeroStart = transitionHero.anchoredPosition;
             Vector2 transferControl = transitionHeroStart + FacingVector(liveGameplay.Facing) * HeroIncomingLeadPixels;
-            DirectionSpriteTurn directionTurn = CreateDirectionSpriteTurn(
-                transitionHero, proxyImage, preview.HeroArt.GetComponent<Image>(), liveGameplay.Facing, nextLevel.Direction);
+            DirectionSpriteTurn directionTurn;
+            using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.ProxySetup))
+                directionTurn = CreateDirectionSpriteTurn(
+                    transitionHero, proxyImage, preview.HeroArt.GetComponent<Image>(), liveGameplay.Facing, nextLevel.Direction);
 
             for (float elapsed = 0f; elapsed < ScrollSeconds; elapsed += Time.unscaledDeltaTime)
             {
-                float timelineProgress = Mathf.Clamp01(elapsed / ScrollSeconds);
-                float t = EaseInOutCubic(timelineProgress);
-                Vector2 offset = Vector2.up * (travel * t);
-                liveStage.anchoredPosition = home + offset;
-                previewStage.anchoredPosition = home + Vector2.down * travel + offset;
-                if (levelLabel != null) levelLabel.anchoredPosition = home + Vector2.down * (viewportHeight + gapHeight * .5f) + offset;
-                Vector2 target = ParentPoint(liveStage.parent as RectTransform, preview.HeroArt);
-                transitionHero.anchoredPosition = QuadraticBezier(transitionHeroStart, transferControl, target, t) + Vector2.up * (Mathf.Sin(t * Mathf.PI) * HeroArcHeight);
-                directionTurn.Update(timelineProgress);
+                using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.ScrollStep))
+                {
+                    float timelineProgress = Mathf.Clamp01(elapsed / ScrollSeconds);
+                    float t = EaseInOutCubic(timelineProgress);
+                    Vector2 offset = Vector2.up * (travel * t);
+                    liveStage.anchoredPosition = home + offset;
+                    previewStage.anchoredPosition = home + Vector2.down * travel + offset;
+                    if (levelLabel != null) levelLabel.anchoredPosition = home + Vector2.down * (viewportHeight + gapHeight * .5f) + offset;
+                    Vector2 target = ParentPoint(liveStage.parent as RectTransform, preview.HeroArt);
+                    transitionHero.anchoredPosition = QuadraticBezier(transitionHeroStart, transferControl, target, t) + Vector2.up * (Mathf.Sin(t * Mathf.PI) * HeroArcHeight);
+                    directionTurn.Update(timelineProgress);
+                }
                 yield return null;
             }
 
             liveStage.anchoredPosition = home + Vector2.up * travel;
             previewStage.anchoredPosition = home;
             transitionHero.anchoredPosition = ParentPoint(liveStage.parent as RectTransform, preview.HeroArt);
-            directionTurn.Complete();
-            if (levelLabel != null) Destroy(levelLabel.gameObject);
+            using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.Cleanup))
+            {
+                directionTurn.Complete();
+                if (levelLabel != null) Destroy(levelLabel.gameObject);
+            }
             yield return WaitUnscaled(FinalArrivalSettleSeconds);
 
             // Hide the visual stand-in first, then rebuild the live board while it remains above
             // the viewport. The live board is returned to home only after existing ApplyLevel has
             // produced the real next-level state, avoiding a visible rebuild/snap.
-            previewStage.gameObject.SetActive(false);
-            handoff?.Invoke();
+            using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.Cleanup))
+                previewStage.gameObject.SetActive(false);
+            using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.LiveApply))
+                handoff?.Invoke();
             liveStage.anchoredPosition = home;
             originalVisualGroup.alpha = originalVisualAlpha;
-            Destroy(transitionHero.gameObject);
-            Destroy(previewStage.gameObject);
+            using (BOKSTransitionDiagnostics.Measure(BOKSTransitionDiagnostics.Phase.Cleanup))
+            {
+                Destroy(transitionHero.gameObject);
+                Destroy(previewStage.gameObject);
+            }
+            BOKSTransitionDiagnostics.Finish();
             activeTransition = null;
         }
 
