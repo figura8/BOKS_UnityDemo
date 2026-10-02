@@ -22098,6 +22098,8 @@ MonoBehaviour:
   gameplay: {fileID: 1828482153}
   grid: {fileID: 1584204443}
   goal: {fileID: 371005591}
+  use3DGoalBubble: 0
+  goalBubble3DMaterial: {fileID: 2100000, guid: 0f6c0e63e8ce42b8acf753d2fa3b8a77, type: 2}
   objectLayer: {fileID: 2051680435}
   overlayLayer: {fileID: 83719726}
   slotRoots:

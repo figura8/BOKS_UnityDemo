@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Rendering;
 using System.Collections.Generic;
 
 namespace BOKS.Demo
@@ -10,6 +11,10 @@ namespace BOKS.Demo
         [SerializeField] BOKSLevel2Controller gameplay;
         [SerializeField] RectTransform grid;
         [SerializeField] RectTransform goal;
+        [Header("Goal Bubble Visual Test")]
+        [Tooltip("Visual-only URP Bubble3D trial. Gameplay, hit detection and the existing pop remain on the original goal root.")]
+        [SerializeField] bool use3DGoalBubble = false;
+        [SerializeField] Material goalBubble3DMaterial;
         [SerializeField] RectTransform objectLayer;
         [SerializeField] RectTransform overlayLayer;
         [SerializeField] RectTransform[] slotRoots;
@@ -22,6 +27,11 @@ namespace BOKS.Demo
         string campaignPlayerCharacterId;
         readonly List<BOKSDecorationReaction> decorationReactions = new List<BOKSDecorationReaction>();
         BOKSLevel1Onboarding onboarding;
+        Transform goalBubble3DRoot;
+        Transform goalBubble3DSurface;
+        Renderer goalBubble3DRenderer;
+        MaterialPropertyBlock goalBubble3DProperties;
+        readonly List<GameObject> originalGoalVisuals = new List<GameObject>();
 
         readonly BOKSCommandType[] paletteOrder = {
             BOKSCommandType.Forward, BOKSCommandType.Left, BOKSCommandType.Right, BOKSCommandType.Function
@@ -93,6 +103,9 @@ namespace BOKS.Demo
             // ApplyLevel is safe to call while the copy is inactive: it only constructs and lays
             // out UI from the existing data-driven definition. No cloned controller is enabled.
             preview.ApplyLevel(level);
+            // The source goal's old UI art is inactive while the visual test is enabled. Give the
+            // inert transition preview its matching mesh before its CampaignView is removed.
+            preview.EnsureGoalBubbleVisualTest();
             RectTransform previewHero = previewGameplay != null ? previewGameplay.HeroRoot : null;
             RectTransform previewHeroVisual = previewGameplay != null ? previewGameplay.HeroVisual : null;
             RectTransform previewHeroArt = previewGameplay != null && previewGameplay.HeroArt != null ? previewGameplay.HeroArt.rectTransform : null;
@@ -115,7 +128,89 @@ namespace BOKS.Demo
 
         // Configure is an editor scene-builder API. At runtime Unity restores the serialized
         // references directly, so the onboarding component must be installed/bound here as well.
-        void Awake() => EnsureRuntimeBindings();
+        void Awake()
+        {
+            EnsureGoalBubbleVisualTest();
+            EnsureRuntimeBindings();
+        }
+
+        // This test deliberately creates only a MeshRenderer child of the existing UI goal. The
+        // root remains the source of truth for placement, CanvasGroup fading and all gameplay.
+        // No collider, input handler, BOKSBubble3D.Pop call or Bubble3D event is introduced here.
+        void EnsureGoalBubbleVisualTest()
+        {
+            if (goal == null || goalBubble3DMaterial == null) return;
+
+            if (goalBubble3DRoot == null)
+            {
+                originalGoalVisuals.Clear();
+                for (int i = 0; i < goal.childCount; i++)
+                {
+                    Transform child = goal.GetChild(i);
+                    if (child.name != "Goal Bubble 3D Visual") originalGoalVisuals.Add(child.gameObject);
+                }
+
+                GameObject root = new GameObject("Goal Bubble 3D Visual");
+                goalBubble3DRoot = root.transform;
+                goalBubble3DRoot.SetParent(goal, false);
+                // Goal has a top-left pivot. This is its visual centre, kept just in front of the
+                // Screen Space - Camera canvas plane so Canvas UI remains above the mesh.
+                goalBubble3DRoot.localPosition = new Vector3(54f, -54f, -0.05f);
+
+                GameObject surface = new GameObject("Surface", typeof(MeshFilter), typeof(MeshRenderer));
+                goalBubble3DSurface = surface.transform;
+                goalBubble3DSurface.SetParent(goalBubble3DRoot, false);
+                MeshFilter filter = surface.GetComponent<MeshFilter>();
+                filter.sharedMesh = Resources.GetBuiltinResource<Mesh>("Sphere.fbx");
+                goalBubble3DRenderer = surface.GetComponent<MeshRenderer>();
+                goalBubble3DRenderer.sharedMaterial = goalBubble3DMaterial;
+                goalBubble3DRenderer.shadowCastingMode = ShadowCastingMode.Off;
+                goalBubble3DRenderer.receiveShadows = false;
+                // Unity's sphere is one unit wide. Match the original 56 x 62 px bubble shell.
+                goalBubble3DSurface.localScale = new Vector3(56f, 62f, 56f);
+            }
+
+            ApplyGoalBubbleVisualMode();
+        }
+
+        void ApplyGoalBubbleVisualMode()
+        {
+            if (goalBubble3DRoot == null) return;
+            foreach (GameObject original in originalGoalVisuals)
+                if (original != null) original.SetActive(!use3DGoalBubble);
+            goalBubble3DRoot.gameObject.SetActive(use3DGoalBubble);
+        }
+
+        void LateUpdate()
+        {
+            if (goalBubble3DRoot == null || !use3DGoalBubble) return;
+            CanvasGroup fade = goal != null ? goal.GetComponent<CanvasGroup>() : null;
+            float alpha = fade != null ? fade.alpha : 1f;
+            if (goalBubble3DRenderer != null)
+            {
+                // Native Unity objects must be created on the main thread, not during
+                // MonoBehaviour construction or deserialization (including inactive previews).
+                if (goalBubble3DProperties == null)
+                    goalBubble3DProperties = new MaterialPropertyBlock();
+                goalBubble3DRenderer.enabled = alpha > .01f;
+                goalBubble3DProperties.SetFloat("_Opacity", alpha);
+                goalBubble3DRenderer.SetPropertyBlock(goalBubble3DProperties);
+            }
+            if (goalBubble3DSurface != null)
+            {
+                float t = Time.unscaledTime * 1.5f;
+                float x = 1f + Mathf.Sin(t) * .012f;
+                float y = 1f + Mathf.Sin(t * 1.37f + 1.1f) * .012f;
+                goalBubble3DSurface.localScale = new Vector3(56f * x, 62f * y, 56f / (x * y));
+            }
+        }
+
+        void OnValidate()
+        {
+            // In the Inspector the toggle updates an already-created Play Mode test immediately.
+            // Outside Play Mode Awake builds the visual, avoiding unrequested scene hierarchy edits.
+            if (Application.isPlaying) ApplyGoalBubbleVisualMode();
+        }
 
         void EnsureRuntimeBindings()
         {

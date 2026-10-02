@@ -1,5 +1,55 @@
 # CURRENT TASK
 
+## Unity technical handoff — 2026-10-02
+
+This section records the latest explicitly requested Unity work in
+`C:\Users\maurizio\Documents\BOKS-Unity-Demo`. The pre-existing PWA handoff below
+is preserved as separate work; it is not an instruction to implement Unity fixes.
+Read `TECHNICAL_ROADMAP.md` before future engineering tasks. No commit was made.
+
+### Work completed
+
+- Preserved the Bubble3D sandbox, Forward payload/flotation and menu visual experiment, including saved menu settings and the temporary anthracite background. Campaign uses the original flower goal; menu visuals remain separate. Restored grid uses the existing procedural cells, not imported image art.
+- Restored the Editor layout override menu through the existing device-layout API.
+- Investigated campaign transition cost without optimizing: full presentation clone, preview construction and live reconstruction are the main CPU candidates; no on-device bottleneck has been confirmed.
+- Added standalone transition diagnostics and ProfilerMarkers. Editor/Development-only panel shows phase timings, ScrollStep average/max/count and frame average/max for about five seconds. Define `BOKS_DISABLE_TRANSITION_DIAGNOSTICS` to disable collection/UI; no per-frame logging or Deep Profiling.
+- Completed a cross-platform technical audit and created root-level `TECHNICAL_ROADMAP.md` with acceptance criteria. No roadmap fixes were implemented.
+
+### Current technical state and verification
+
+- Unity 6000.6.0f1 / URP; two production scenes and cached, data-driven campaign Levels 1–10. Android and iOS resolve to IL2CPP; iOS graphics API is Metal.
+- Diagnostics produced all requested measurements for an Editor 1→2 scroll and hid automatically. Cleanup is synchronous deactivation/Destroy scheduling, not full deferred destruction; timings do not identify GPU or GC cost by themselves.
+- Last audit console check reported no compilation failures or current Console errors. Full test suite was not rerun; Editor timings are not Redmi/iOS performance evidence.
+- No new APK was built for the diagnostics. ADB reported no connected device. No iOS build/device validation was performed; this installation lacks iOS build support.
+
+### Open risks
+
+- Conflicting orientation policy: effective default `PortraitUpsideDown`, portrait-only Android manifest processing, tablet-landscape runtime policy and disabled landscape PlayerSettings permissions.
+- Layout selection is device-based rather than window/safe-area-based. Campaign handles safe area; menu does not.
+- No explicit pause/focus policy, interrupted-drag cancellation, single-drag ownership guard or persistent progress/settings.
+- Iris shader relies on `Shader.Find` without explicit build inclusion. Texture platform overrides/atlas are absent in the inspected assets; audio loads synchronously on first use.
+- Transition clone/rebuild, UI geometry/allocations, transparency and Development tooling are performance hypotheses pending device measurements. Apple signing/icons/export workflow is not validated.
+
+### Device tests still required
+
+- Build/install diagnostic Development APK and record first/repeated scrolls, especially 6→7, on Redmi 13 or equivalent. Compare Release and Development under equivalent conditions and account for Script Debugging/tooling.
+- Validate menu tap→pop→single campaign entry, original flower goal, procedural grid alignment and readable controls on Android phone/tablet and iPhone/iPad.
+- Validate startup orientation without visible correction, safe areas/cutouts/home indicator, window/orientation changes, interrupted/two-finger drag, backgrounding during execution/scroll, and audio resumption.
+- Validate iris and bubble shaders on Android Release and iOS Metal/TestFlight. Meet roadmap acceptance criteria before marking items DONE.
+
+### Next recommended task
+
+Collect standalone transition data on the Redmi before authorizing any transition optimization. For hardening implementation, begin with roadmap Phase 1 item 1 (orientation/layout) only when explicitly requested. Preserve working gameplay and visual timings.
+
+### Checkpoint scope (nothing staged or committed)
+
+- Keep intentional Unity changes: `TECHNICAL_ROADMAP.md`; the new Unity handoff in this file; `BOKSCampaignView.cs`, `BOKSMainMenu.cs`; `BOKS_Campaign.unity`, `BOKS_MainMenu.unity`; the complete `Assets/BOKS-Bubble3D-v1` package and its folder meta; `Assets/BOKS/Bubble3D` files and folder meta; `BOKS_Bubble3D_Test.unity` and meta; `BOKSLayoutTestMenu.cs` and meta. Include all associated Unity metadata to preserve GUID references.
+- Keep temporary device diagnostics: `BOKSTransitionDiagnostics.cs` and meta, plus instrumentation changes in `BOKSLevelScrollTransition.cs`, `BOKSGoalPopVFX.cs` and the mixed-purpose `BOKSCampaignView.cs`.
+- Exclude unrelated/uncertain changes from this checkpoint, without deleting/reverting them: `AGENT_CONTEXT.md` (PWA notes), the older PWA addition in this file, `BOKSProgramAreaPresentation.cs` (pre-existing Function-fill change), `ProjectSettings/ProjectSettings.asset` (pre-existing icons/splash/DOTween/stripping changes), `Assets/Resources/Illustrator` and its folder meta, `Assets/_Recovery` and its folder meta.
+- Git inspection found 10 modified and 49 untracked files (59 total). `CURRENT_TASK.md` is mixed-purpose: stage only this Unity handoff for a Unity-only checkpoint, not the older PWA diff. Do not use `git add .`.
+
+---
+
 ## Session handoff — generalized Campaign scroll transition
 
 ### Completed state

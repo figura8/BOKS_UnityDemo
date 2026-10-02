@@ -1,0 +1,326 @@
+# BÖKS Technical Roadmap
+
+## Goal
+
+Take the current project from a functional development build to a robust cross-platform mobile release without unnecessary architectural rewrites.
+
+BÖKS targets Android phones, Android tablets, iPhone and iPad, including reasonably older/lower-end devices. Its architecture is generally appropriate for a small mobile game. This is a hardening roadmap, not a rewrite plan: focus on concrete shipping, performance, robustness and cross-platform risks identified in the technical audit.
+
+Audit findings describe the inspected implementation, not confirmed failures on every device. Reinspect current code and settings before acting. Writing this document does not implement or authorize any fixes.
+
+## Engineering principles
+
+- Measure before optimizing.
+- Prefer the smallest safe fix.
+- Do not redesign working systems without evidence.
+- Keep Android and iOS behaviour aligned.
+- Separate device type, orientation and layout mode.
+- Release builds are the performance reference.
+- Avoid premature systems such as ECS or Addressables unless future evidence justifies them.
+
+## Phase 1 — Fix now
+
+### 1. Orientation and responsive layout
+
+Current problems:
+
+- PlayerSettings, runtime and Android manifest orientation policy is inconsistent.
+- The current default orientation is `PortraitUpsideDown`.
+- Android manifest postprocessing forces portrait.
+- Runtime layout currently assumes phone = portrait and tablet = landscape.
+- Layout composition is selected mainly from device classification rather than actual available safe-area dimensions.
+
+Desired outcome:
+
+- One explicit orientation policy shared across Android/iOS.
+- No contradictory startup/runtime orientation settings.
+- Device type, orientation and layout composition treated independently.
+- Existing portrait and landscape compositions selected using available screen/safe-area dimensions where appropriate.
+
+Acceptance criteria:
+
+- Android phone behaves correctly.
+- Android tablet behaves correctly.
+- iPhone behaves correctly.
+- iPad behaves correctly.
+- No upside-down launch.
+- Orientation does not visibly correct itself after startup.
+- Manual layout-test overrides continue working.
+
+Status: TODO
+
+### 2. Main Menu safe area
+
+Current problem:
+
+- Campaign already fits `Screen.safeArea`.
+- Main Menu currently uses the full Canvas area.
+
+Desired outcome:
+
+- Main Menu composition respects safe area without changing the intended visual design.
+
+Acceptance criteria:
+
+- No important content overlaps notch, Dynamic Island, rounded corners or home indicator.
+- Visual centring remains correct on Android, iPhone and iPad.
+
+Status: TODO
+
+### 3. Mobile lifecycle and input robustness
+
+Current problems:
+
+- No explicit pause/focus/background policy.
+- Active drag can potentially be replaced by another drag.
+- Interrupted drag has incomplete cancellation handling.
+
+Desired outcome:
+
+- Clean behaviour when the app loses focus or enters background.
+- Only one command drag can own the interaction at a time.
+- Interrupted interactions recover safely.
+
+Acceptance criteria:
+
+- Second finger cannot corrupt active drag state.
+- Backgrounding during drag does not leave a ghost or invalid state.
+- Backgrounding during level execution or transition does not break progression.
+- Audio resumes in a predictable state.
+
+Status: TODO
+
+### 4. Iris shader inclusion
+
+Current problem:
+
+- Iris shader is found dynamically with `Shader.Find`.
+- Build inclusion is not guaranteed.
+
+Desired outcome:
+
+- Shader/material is explicitly referenced so stripping cannot remove it accidentally.
+
+Acceptance criteria:
+
+- Iris works in Android Release.
+- Iris works in iOS Release/TestFlight.
+- No global broad shader preservation unless required.
+
+Status: TODO
+
+## Phase 2 — Before beta
+
+### 5. Measure level-transition performance
+
+Current state:
+
+- Transition diagnostics now exist.
+- Development builds can display:
+  - Clone
+  - PreviewApply
+  - PreviewActivate
+  - ProxySetup
+  - ScrollStep average/max and sampled frame count
+  - LiveApply
+  - Cleanup
+  - GoalPop.EnsureAssets
+  - Frame delta average/max
+
+Known structural risk:
+
+- Full visual hierarchy clone.
+- Next level constructed in preview.
+- Same level constructed again in live presentation.
+- Old and next visual presentation coexist during scroll.
+
+Do not optimize this system until device measurements justify the change. Scope timings measure synchronous elapsed work, not GPU time or all deferred Unity work. Cleanup measures deactivation/destruction scheduling; frame statistics include the final frame. The existing panel alone cannot attribute GC, Canvas rebuild or GPU cost conclusively.
+
+Test devices should include at minimum:
+
+- Redmi 13 or equivalent lower-end Android.
+- A representative iPhone.
+- A representative iPad when available.
+
+Prioritize transition 6 → 7 because it includes a higher number of bee decorations. Compare equivalent content and conditions across Development and Release, controlling debugging/tooling overhead.
+
+Acceptance criteria:
+
+- Identify whether observed stutter comes primarily from:
+  - Clone
+  - PreviewApply
+  - UI/Canvas work
+  - Scroll
+  - LiveApply
+  - Cleanup/GC
+  - GPU/rendering
+  - Development tooling overhead
+- Only then create an optimization task.
+
+Status: INSTRUMENTED / NEEDS DEVICE DATA
+
+### 6. Minimal persistence
+
+Current problem:
+
+- No persistent campaign progress/settings system currently exists.
+
+Desired outcome:
+
+- Small, versioned save record.
+
+Suggested scope:
+
+- Highest/unlocked level.
+- Essential settings only.
+
+Avoid building a large save framework.
+
+Acceptance criteria:
+
+- Progress survives app termination.
+- Invalid/old save data fails safely.
+- Future save format can be migrated.
+
+Status: TODO
+
+### 7. Mobile asset tuning
+
+Current findings:
+
+- Many textures use default/uncompressed settings.
+- No Android/iOS-specific texture overrides were found in the examined set.
+- No SpriteAtlas currently exists.
+- Some unused Resources assets may still ship.
+
+Desired outcome:
+
+- Reduce memory/bandwidth where useful without damaging the clean graphic style.
+
+Tasks should consider:
+
+- Texture max sizes.
+- Android compression.
+- iOS ASTC where appropriate.
+- Translucent edge quality.
+- Unused Resources cleanup.
+- SpriteAtlas only for frequently co-rendered sprites if beneficial.
+
+Do not blindly atlas everything. Validate platform formats and visual quality on supported devices; asset size is not a substitute for measuring runtime memory.
+
+Status: TODO
+
+### 8. First-use audio spikes
+
+Current behaviour:
+
+- Audio is loaded synchronously on first request and then cached.
+
+Desired outcome:
+
+- Warm only critical interaction sounds if device testing shows a first-use hitch.
+
+Do not redesign the audio manager.
+
+Status: MEASURE FIRST
+
+## Phase 3 — Before store release
+
+### 9. Android release pipeline
+
+Verify:
+
+- IL2CPP.
+- ARM64.
+- Target SDK required by Google Play at submission time.
+- Generated Android manifest.
+- Orientation.
+- Release signing.
+- Stripping.
+- Vulkan/OpenGLES behaviour.
+- Clean Release APK/AAB.
+- Diagnostics excluded where intended.
+
+Acceptance criteria:
+
+- Reproducible release build.
+- Store-ready artifact.
+- Tested on phone and tablet.
+
+Status: TODO
+
+### 10. iOS / iPadOS release pipeline
+
+Verify:
+
+- IL2CPP.
+- Metal.
+- Device architecture and minimum supported OS.
+- Xcode archive using the SDK/toolchain required at submission time.
+- Signing/team/profile.
+- App icons.
+- Info.plist orientation declarations.
+- Safe area.
+- iPhone.
+- iPad, including applicable orientation/window-size changes.
+- Shader behaviour on Metal.
+- Pause/resume.
+- TestFlight installation.
+- Release stripping and diagnostics excluded where intended.
+
+Acceptance criteria:
+
+- Reproducible signed archive.
+- Successful TestFlight build.
+- Tested on at least one iPhone and one iPad before release.
+
+Status: TODO
+
+## Explicitly not planned
+
+Unless new evidence requires them, do not introduce:
+
+- ECS.
+- Addressables migration.
+- Universal UI framework.
+- Major gameplay-controller rewrite.
+- Complete transition rewrite.
+- Broad `link.xml` preservation.
+- Complex save framework.
+
+These are currently considered unnecessary for BÖKS.
+
+## Current technical strengths
+
+Preserve these so future work does not accidentally replace good existing systems:
+
+- Small data-driven gameplay architecture.
+- Campaign JSON loaded once and cached.
+- Shared gameplay controller.
+- Input System/EventSystem is cross-platform.
+- No problematic native mobile plugin dependency identified in the audit.
+- Existing campaign safe-area handling.
+- Existing phone/tablet layout compositions.
+- IL2CPP on Android/iOS.
+- Incremental GC.
+- Bounded command execution.
+
+## Working process
+
+For future technical tasks:
+
+1. Read this roadmap first.
+2. Inspect current implementation before editing.
+3. Make the smallest change that solves the documented problem.
+4. Preserve existing gameplay and visual behaviour unless the task explicitly changes it.
+5. Report files changed and validation performed.
+6. Update this Markdown status only when the task is actually completed and verified.
+
+Use simple status labels for subsequent updates:
+
+- TODO
+- IN PROGRESS
+- NEEDS DEVICE TEST
+- DONE
+
+The initial statuses `INSTRUMENTED / NEEDS DEVICE DATA` and `MEASURE FIRST` above retain the requested measurement gates; neither means completed. Do not mark something DONE solely because code was written: it must satisfy its acceptance criteria, including required device verification.

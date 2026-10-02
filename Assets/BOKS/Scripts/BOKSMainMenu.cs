@@ -8,6 +8,11 @@ using UnityEngine.UI;
 
 namespace BOKS.Demo
 {
+    public interface IBOKSMenuBubble
+    {
+        void Build(RectTransform host);
+        IEnumerator Pop();
+    }
     /// <summary>Small portrait start gate for the existing campaign scene.</summary>
     public sealed class BOKSMainMenu : MonoBehaviour
     {
@@ -39,6 +44,8 @@ namespace BOKS.Demo
         static bool ShowFinalLayoutOnly = false;
         static bool LogIntroLayout = false;
         [SerializeField] Sprite logoSprite;
+        [SerializeField] MonoBehaviour bubble3DVisual;
+        IBOKSMenuBubble MenuBubble => bubble3DVisual as IBOKSMenuBubble;
         [Header("Intro composition")]
         [SerializeField] Sprite characterGreenDown;
         [SerializeField] Sprite characterRedRight;
@@ -124,6 +131,7 @@ namespace BOKS.Demo
 
         void Build()
         {
+            if (MenuBubble != null) { BuildBubble3DMenu(); return; }
             tabletLayout = BOKSDeviceLayout.CurrentMode == BOKSDeviceLayoutMode.TabletLandscape;
             Vector2 reference = tabletLayout ? new Vector2(1280f, 800f) : new Vector2(520f, 1000f);
             var canvasGo = new GameObject("Portrait Menu (520 x 1000)", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
@@ -201,6 +209,13 @@ namespace BOKS.Demo
 
         IEnumerator PlayMenuIntro()
         {
+            if (MenuBubble != null)
+            {
+                yield return FadeGroup(introLogoGroup, 0f, 1f, 1.1f, Vector2.one);
+                finalCompositionGroup.blocksRaycasts = true;
+                startButton.interactable = true;
+                yield break;
+            }
             if (ShowFinalLayoutOnly) yield break;
             introSequence = CreateIntroSequence();
             if (introSequence != null) yield return introSequence.WaitForCompletion();
@@ -347,7 +362,7 @@ namespace BOKS.Demo
 
         void StartCampaign()
         {
-            if (startButton == null || !startButton.interactable) return;
+            if (isPopping || startButton == null || !startButton.interactable) return;
             startButton.interactable = false;
             isPopping = true;
             BOKSAudioManager.Play(BOKSAudioCue.Welcome);
@@ -357,6 +372,7 @@ namespace BOKS.Demo
 
         void Update()
         {
+            if (MenuBubble != null) return;
             if (isPopping) return;
             float drift = Mathf.Repeat(Time.unscaledTime / 5.2f, 1f);
             Vector3 pose = DriftPose(drift);
@@ -376,6 +392,13 @@ namespace BOKS.Demo
 
         IEnumerator OpenCampaign()
         {
+            if (MenuBubble != null)
+            {
+                yield return MenuBubble.Pop();
+                DontDestroyOnLoad(gameObject);
+                yield return OpenCampaignBehindGate();
+                yield break;
+            }
             float elapsed = 0f;
             while (elapsed < StartPopSeconds)
             {
@@ -567,6 +590,42 @@ namespace BOKS.Demo
             return ((ay * t + by) * t + cy) * t;
         }
 
+        void BuildBubble3DMenu()
+        {
+            tabletLayout = BOKSDeviceLayout.CurrentMode == BOKSDeviceLayoutMode.TabletLandscape;
+            var canvasGo = new GameObject("BOKS Logo and Bubble Menu", typeof(RectTransform), typeof(Canvas),
+                typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
+            canvasGo.transform.SetParent(transform, false);
+            canvasGo.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
+            CanvasScaler scaler = canvasGo.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(520f, 1000f);
+            scaler.matchWidthOrHeight = .5f;
+            menuRoot = canvasGo.GetComponent<RectTransform>();
+            menuGroup = canvasGo.GetComponent<CanvasGroup>();
+            var background = AddImage("Notebook Background", menuRoot, null, Vector2.zero, Vector2.one);
+            background.anchorMin = Vector2.zero;
+            background.anchorMax = Vector2.one;
+            background.offsetMin = background.offsetMax = Vector2.zero;
+            background.GetComponent<Image>().color = new Color32(38, 40, 44, 255);
+            RectTransform composition = Rect("Logo and Bubble Composition", menuRoot, Vector2.zero, new Vector2(400f, 500f));
+            composition.gameObject.AddComponent<BOKSMenuResponsiveComposition>();
+            var logo = AddImage("BÖKS Logo", composition, logoSprite, new Vector2(0f, 140f), new Vector2(320f, 147f));
+            introLogoGroup = logo.gameObject.AddComponent<CanvasGroup>();
+            introLogoGroup.alpha = 0f;
+            bubble = Rect("Forward Bubble", composition, new Vector2(0f, -75f), new Vector2(300f, 300f));
+            finalCompositionGroup = bubble.gameObject.AddComponent<CanvasGroup>();
+            finalCompositionGroup.blocksRaycasts = false;
+            MenuBubble.Build(bubble);
+            startButton = bubble.gameObject.AddComponent<Button>();
+            startButton.targetGraphic = bubble.GetComponent<RawImage>();
+            startButton.transition = Selectable.Transition.None;
+            startButton.interactable = false;
+            startButton.onClick.AddListener(StartCampaign);
+            if (FindAnyObjectByType<EventSystem>() == null)
+                new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
+        }
+
         void BuildIntroComposition(RectTransform introRoot)
         {
             const float characterSize = 82f;
@@ -670,5 +729,17 @@ namespace BOKS.Demo
             return shape;
         }
 
+    }
+
+    // Fit the same centred stack to the available canvas height/width, including live resizing.
+    public sealed class BOKSMenuResponsiveComposition : MonoBehaviour
+    {
+        void LateUpdate()
+        {
+            RectTransform parent = transform.parent as RectTransform;
+            if (parent == null) return;
+            float fit = Mathf.Min(1f, Mathf.Min(parent.rect.width / 430f, parent.rect.height / 570f));
+            transform.localScale = Vector3.one * fit;
+        }
     }
 }

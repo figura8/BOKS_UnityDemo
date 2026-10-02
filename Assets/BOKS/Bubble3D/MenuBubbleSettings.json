@@ -1,0 +1,20 @@
+{
+  "rim": 0.5716861,
+  "iridescence": 0.74,
+  "highlight": 0.783567369,
+  "centerAlpha": 0.09348646,
+  "rimPower": 6.58142376,
+  "wobble": 0.1,
+  "wobbleSpeed": 1.5,
+  "popDuration": 1.0,
+  "membraneTearPop": true,
+  "anticipationSeconds": 0.055,
+  "inflation": 0.09,
+  "arcCount": 8,
+  "dropCount": 18,
+  "arcWidth": 0.1,
+  "dropletSize": 0.13,
+  "expansion": 0.92,
+  "tint": { "r": 0.76, "g": 0.92, "b": 0.96, "a": 1.0 },
+  "opacity": 1.0
+}
